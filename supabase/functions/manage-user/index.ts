@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     const { data: callerProfile } = await supabaseClient
       .from('profiles')
-      .select('role, can_manage_users')
+      .select('role, can_manage_users, company_id')
       .eq('id', caller.id)
       .single();
 
@@ -44,6 +44,14 @@ Deno.serve(async (req) => {
 
     if (!allowed) {
       return new Response(JSON.stringify({ error: 'Not permitted to manage users' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // A dispatcher/master_dispatcher with no company on their own profile has
+    // no valid scope to manage anyone under — deny rather than fall through.
+    if (!callerProfile.company_id) {
+      return new Response(JSON.stringify({ error: 'Your account has no company assigned' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -60,6 +68,21 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // SECURITY: confirm the target user belongs to the caller's own company —
+    // without this, a dispatcher could delete, take over, or reset the
+    // password of a user in a completely different company.
+    const { data: targetProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('company_id')
+      .eq('id', targetUserId)
+      .single();
+
+    if (!targetProfile || targetProfile.company_id !== callerProfile.company_id) {
+      return new Response(JSON.stringify({ error: 'User not found in your company' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (action === 'delete_user') {
       const { error } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
