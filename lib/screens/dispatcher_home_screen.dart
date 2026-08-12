@@ -340,11 +340,12 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             children: [
-              Expanded(
+              SizedBox(
+                width: 260,
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search by AWB (space or new line separated)',
+                    hintText: 'Search by AWB',
                     isDense: true,
                     filled: true,
                     fillColor: AppColors.background,
@@ -357,7 +358,62 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                   onSubmitted: (_) => _runSearch(),
                 ),
               ),
-              const SizedBox(width: 12),
+              if (_selectedIds.isNotEmpty) ...[
+                const SizedBox(width: 14),
+                Text('${_selectedIds.length} selected',
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.purple, fontSize: 13)),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.download, size: 18),
+                  tooltip: 'Export Selected',
+                  onPressed: _exportSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.qr_code, size: 18),
+                  tooltip: 'Print Barcodes',
+                  onPressed: () {
+                    final selectedOrders = _orders.where((o) => _selectedIds.contains(o['id'])).toList();
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => BarcodePrintScreen(orders: selectedOrders)));
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  tooltip: 'Bulk Edit',
+                  onPressed: () async {
+                    final changed = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => BulkEditDialog(orderIds: _selectedIds.toList()),
+                    );
+                    if (changed == true) _loadOrders();
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                  tooltip: 'Delete',
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Delete orders?'),
+                        content: Text('This will permanently delete ${_selectedIds.length} order(s). This cannot be undone.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                          FilledButton(
+                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await supabase.from('orders').delete().inFilter('id', _selectedIds.toList());
+                      _loadOrders();
+                    }
+                  },
+                ),
+              ],
+              const Spacer(),
               DateRangeButton(
                 range: _dateRange,
                 onChanged: (r) {
@@ -394,68 +450,6 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
           enabledFilters: _enabledFilters,
           onChanged: (f) => _loadOrders(),
         ),
-        if (_selectedIds.isNotEmpty)
-          Container(
-            width: double.infinity,
-            color: AppColors.purpleLight,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              children: [
-                Text('${_selectedIds.length} selected',
-                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.purple)),
-                const Spacer(),
-                TextButton.icon(
-                  icon: const Icon(Icons.download, size: 18),
-                  label: const Text('Export Selected'),
-                  onPressed: _exportSelected,
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.qr_code, size: 18),
-                  label: const Text('Print Barcodes'),
-                  onPressed: () {
-                    final selectedOrders = _orders.where((o) => _selectedIds.contains(o['id'])).toList();
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BarcodePrintScreen(orders: selectedOrders)));
-                  },
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.edit_note, size: 18),
-                  label: const Text('Bulk Edit'),
-                  onPressed: () async {
-                    final changed = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => BulkEditDialog(orderIds: _selectedIds.toList()),
-                    );
-                    if (changed == true) _loadOrders();
-                  },
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                  label: const Text('Delete', style: TextStyle(color: Colors.red)),
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Delete orders?'),
-                        content: Text('This will permanently delete ${_selectedIds.length} order(s). This cannot be undone.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                          FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      await supabase.from('orders').delete().inFilter('id', _selectedIds.toList());
-                      _loadOrders();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
         const Divider(height: 1, color: AppColors.border),
         Expanded(
           child: _loading
