@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="lastmile_v2">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>MASAR</title>
+  <link rel="manifest" href="manifest.json">
+<style>
+    html, body {
+      touch-action: pinch-zoom pan-x pan-y;
+    }
+    /* Flutter's own root rendering element sets touch-action: none via an
+       inline style, specifically to handle all gestures itself — that
+       inline style overrides the rule above since it's more specific.
+       This forces pinch-zoom back on for that exact element, while still
+       letting Flutter handle panning/scrolling internally as normal. */
+    flt-glass-pane, flutter-view, flt-scene-host {
+      touch-action: pinch-zoom !important;
+    }
+  </style>
+  <script>
+    // Flutter Web's engine captures wheel events for its own scrolling and
+    // calls preventDefault() on them — which also blocks the browser's
+    // native Ctrl+Scroll zoom gesture before the browser can act on it.
+    window.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) {
+        e.stopImmediatePropagation();
+      }
+    }, { capture: true, passive: false });
+
+    // Flutter's engine sets touch-action: none via JAVASCRIPT at runtime
+    // (after this page loads) on the <html>/<body> and its own rendering
+    // element, specifically to stop the browser from doing native
+    // touch/pan/zoom so Flutter can handle all gestures itself. Because
+    // this happens AFTER our page loads, no static CSS can override it —
+    // we have to actively watch for it and correct it continuously.
+    function forceTouchActionAllowZoom() {
+      [document.documentElement, document.body].forEach(function (el) {
+        if (el && el.style && el.style.touchAction !== 'pinch-zoom') {
+          el.style.setProperty('touch-action', 'pinch-zoom', 'important');
+        }
+      });
+      document.querySelectorAll('flt-glass-pane, flutter-view, flt-scene-host, canvas').forEach(function (el) {
+        if (el.style.touchAction !== 'pinch-zoom') {
+          el.style.setProperty('touch-action', 'pinch-zoom', 'important');
+        }
+      });
+    }
+
+    // Run immediately, then keep re-checking, since Flutter may (re)apply
+    // its own touch-action setting at various points during startup.
+    forceTouchActionAllowZoom();
+    var touchActionInterval = setInterval(forceTouchActionAllowZoom, 300);
+    // Stop the interval after 15 seconds — Flutter's startup-time changes
+    // should be done well before then, no need to keep polling forever.
+    setTimeout(function () { clearInterval(touchActionInterval); }, 15000);
+
+    var touchActionObserver = new MutationObserver(forceTouchActionAllowZoom);
+    touchActionObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style'],
+      subtree: true,
+    });
+  </script>
+</head>
+<body>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
