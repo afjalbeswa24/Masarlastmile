@@ -373,7 +373,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
                   ),
                 ),
               ],
-              if (_iAmMaster) ...[
+              if (_iAmMaster && _role == 'dispatcher') ...[
                 const SizedBox(height: 4),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.upgrade),

@@ -39,6 +39,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   List<Map<String, dynamic>> _orders = [];
   Set<String> _selectedIds = {};
   bool _loading = true;
+  bool _isMaster = false;
   final _searchController = TextEditingController();
 
   final _filters = OrderFilters();
@@ -66,6 +67,16 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
     final todayOnly = DateTime(today.year, today.month, today.day);
     _dateRange = DateTimeRange(start: todayOnly, end: todayOnly);
     _loadOrders();
+    _loadMyRole();
+  }
+
+  Future<void> _loadMyRole() async {
+    final data = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', supabase.auth.currentUser!.id)
+        .single();
+    if (mounted) setState(() => _isMaster = data['role'] == 'master_dispatcher');
   }
 
   String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -515,16 +526,18 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                 const SizedBox(width: 20),
                 _navItem('Reports', _DispatcherTab.reports),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.people_alt, color: Colors.white70),
-                  tooltip: 'Manage Users',
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person_add, color: Colors.white70),
-                  tooltip: 'Add User',
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddUserScreen())),
-                ),
+                if (_isMaster) ...[
+                  IconButton(
+                    icon: const Icon(Icons.people_alt, color: Colors.white70),
+                    tooltip: 'Manage Users',
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.person_add, color: Colors.white70),
+                    tooltip: 'Add User',
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddUserScreen())),
+                  ),
+                ],
                 IconButton(
                   icon: const Icon(Icons.upload_file, color: Colors.white70),
                   tooltip: 'Bulk Upload Orders',
