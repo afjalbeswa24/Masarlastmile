@@ -4,6 +4,11 @@ import '../main.dart';
 import '../theme/app_theme.dart';
 import '../utils/qatar_time.dart';
 
+class _LeaderboardStat {
+  int total = 0;
+  int hit = 0;
+}
+
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
 
@@ -33,7 +38,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
     final rangeData = await supabase
         .from('orders')
-        .select('id, status, assigned_driver_id, cod_amount, collected_amount, delivered_at, delivery_date, delivery_window_start, delivery_window_end')
+        .select('''
+          id, status, assigned_driver_id, cod_amount, collected_amount, delivered_at,
+          delivery_date, delivery_window_start, delivery_window_end,
+          driver:profiles!orders_assigned_driver_id_fkey(full_name),
+          merchant:profiles!orders_merchant_id_fkey(full_name)
+        ''')
         .gte('delivery_date', _fmtDate(_rangeStart))
         .lte('delivery_date', _fmtDate(_rangeEnd));
 
@@ -93,6 +103,38 @@ class _InsightsScreenState extends State<InsightsScreen> {
       }
     }
     final punctualityTotal = onTime + early + late;
+
+    // Top drivers by on-time rate — only counts deliveries that had a
+    // delivery window set (same eligibility rule as the Punctuality card
+    // above), and requires at least 3 such deliveries so one lucky/unlucky
+    // order doesn't put a driver at the top or bottom.
+    final driverStats = <String, _LeaderboardStat>{};
+    for (final o in _orders) {
+      if (o['status'] != 'delivered' || o['delivered_at'] == null) continue;
+      final start = o['delivery_window_start'] as String?;
+      final end = o['delivery_window_end'] as String?;
+      if (start == null || end == null) continue;
+      final name = o['driver']?['full_name'] as String?;
+      if (name == null) continue;
+      final stat = driverStats.putIfAbsent(name, () => _LeaderboardStat());
+      stat.total++;
+      final hm = QatarTime.hm(QatarTime.fromIso(o['delivered_at']));
+      if (hm.compareTo(start) >= 0 && hm.compareTo(end) <= 0) stat.hit++;
+    }
+    final topDrivers = driverStats.entries.where((e) => e.value.total >= 3).toList()
+      ..sort((a, b) => (b.value.hit / b.value.total).compareTo(a.value.hit / a.value.total));
+
+    // Top merchants by order volume in the selected date range.
+    final merchantStats = <String, _LeaderboardStat>{};
+    for (final o in _orders) {
+      final name = o['merchant']?['full_name'] as String?;
+      if (name == null) continue;
+      final stat = merchantStats.putIfAbsent(name, () => _LeaderboardStat());
+      stat.total++;
+      if (o['status'] == 'delivered') stat.hit++;
+    }
+    final topMerchants = merchantStats.entries.toList()
+      ..sort((a, b) => b.value.total.compareTo(a.value.total));
 
     double toBeCollected = 0, collected = 0;
     for (final o in _orders) {
@@ -164,6 +206,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Expanded(child: _leaderboardCard(
+                        title: 'Top drivers',
+                        subtitle: 'By on-time delivery rate, minimum 3 timed deliveries',
+                        entries: topDrivers.take(3).toList(),
+                        emptyText: 'Not enough timed deliveries yet to rank drivers.',
+                        rowSubtitle: (e) => '${e.value.hit} of ${e.value.total} on time',
+                        rowValue: (e) => '${(e.value.hit / e.value.total * 100).round()}%',
+                        rowValueColor: (e) => (e.value.hit / e.value.total) >= 0.5 ? AppColors.statusDelivered : AppColors.statusPending,
+                      )),
+                      const SizedBox(width: 16),
+                      Expanded(child: _leaderboardCard(
+                        title: 'Top merchants',
+                        subtitle: 'By order volume in this date range',
+                        entries: topMerchants.take(3).toList(),
+                        emptyText: 'No orders in this date range yet.',
+                        rowSubtitle: (e) => '${e.value.hit} of ${e.value.total} delivered',
+                        rowValue: (e) => '${e.value.total}',
+                        rowValueColor: (e) => AppColors.purple,
+                      )),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Expanded(flex: 2, child: _monthlyChartCard(monthlyCounts, yearTotal)),
                       const SizedBox(width: 16),
                       Expanded(child: _cashCard(toBeCollected, collected)),
@@ -172,6 +239,86 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  static const _rankColors = [
+    (bg: Color(0xFFFAC775), fg: Color(0xFF633806)), // gold
+    (bg: Color(0xFFD3D1C7), fg: Color(0xFF444441)), // silver
+    (bg: Color(0xFFF0997B), fg: Color(0xFF4A1B0C)), // bronze
+  ];
+
+  static const _avatarColors = [AppColors.purple, Color(0xFF0F6E56), Color(0xFF993C1D)];
+
+  Widget _leaderboardCard({
+    required String title,
+    required String subtitle,
+    required List<MapEntry<String, _LeaderboardStat>> entries,
+    required String emptyText,
+    required String Function(MapEntry<String, _LeaderboardStat>) rowSubtitle,
+    required String Function(MapEntry<String, _LeaderboardStat>) rowValue,
+    required Color Function(MapEntry<String, _LeaderboardStat>) rowValueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 14),
+          if (entries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(emptyText, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            )
+          else
+            ...entries.asMap().entries.map((indexed) {
+              final i = indexed.key;
+              final e = indexed.value;
+              final initials = e.key.trim().isEmpty
+                  ? '?'
+                  : e.key.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0]).join().toUpperCase();
+              return Padding(
+                padding: EdgeInsets.only(bottom: i == entries.length - 1 ? 0 : 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 22, height: 22,
+                      decoration: BoxDecoration(color: _rankColors[i].bg, shape: BoxShape.circle),
+                      alignment: Alignment.center,
+                      child: Text('${i + 1}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _rankColors[i].fg)),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(color: _avatarColors[i % _avatarColors.length], shape: BoxShape.circle),
+                      alignment: Alignment.center,
+                      child: Text(initials, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(e.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                          Text(rowSubtitle(e), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    Text(rowValue(e), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: rowValueColor(e))),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
