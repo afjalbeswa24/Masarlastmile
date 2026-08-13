@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
 import '../utils/qatar_time.dart';
+import '../widgets/date_range_button.dart';
 
 class _LeaderboardStat {
   int total = 0;
@@ -60,20 +61,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
     });
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2024),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: DateTimeRange(start: _rangeStart, end: _rangeEnd),
-    );
-    if (picked != null) {
-      setState(() {
-        _rangeStart = picked.start;
-        _rangeEnd = picked.end;
-      });
-      _load();
-    }
+  void _onRangeChanged(DateTimeRange? picked) {
+    if (picked == null) return; // Insights always needs a period selected — ignore a "Clear".
+    setState(() {
+      _rangeStart = picked.start;
+      _rangeEnd = picked.end;
+    });
+    _load();
   }
 
   @override
@@ -163,10 +157,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: Text('${_fmtDate(_rangeStart)} ~ ${_fmtDate(_rangeEnd)}', style: const TextStyle(fontSize: 13)),
-                    onPressed: _pickDateRange,
+                  DateRangeButton(
+                    range: DateTimeRange(start: _rangeStart, end: _rangeEnd),
+                    onChanged: _onRangeChanged,
                   ),
                   const SizedBox(height: 16),
                   Row(
