@@ -235,7 +235,8 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Expanded(
+                SizedBox(
+                  width: 220,
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
@@ -252,7 +253,31 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                     onSubmitted: (_) => _runSearch(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                if (_selectedIds.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Text('${_selectedIds.length} selected',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.purple, fontSize: 13)),
+                  const SizedBox(width: 2),
+                  IconButton(
+                    icon: const Icon(Icons.download, size: 18),
+                    tooltip: 'Export Selected',
+                    onPressed: _exportSelected,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.qr_code, size: 18),
+                    tooltip: 'Print Labels',
+                    onPressed: () {
+                      final selectedOrders = _orders.where((o) => _selectedIds.contains(o['id'])).toList();
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => BarcodePrintScreen(orders: selectedOrders)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+                    tooltip: 'Cancel',
+                    onPressed: _bulkCancel,
+                  ),
+                ],
+                const Spacer(),
                 DateRangeButton(
                   range: _dateRange,
                   onChanged: (r) {
@@ -314,36 +339,6 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
             enabledFilters: _enabledFilters,
             onChanged: (f) => _loadOrders(),
           ),
-          if (_selectedIds.isNotEmpty)
-            Container(
-              width: double.infinity,
-              color: AppColors.purpleLight,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Row(
-                children: [
-                  Text('${_selectedIds.length} selected', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.purple)),
-                  const Spacer(),
-                  TextButton.icon(
-                    icon: const Icon(Icons.download, size: 18),
-                    label: const Text('Export Selected'),
-                    onPressed: _exportSelected,
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.qr_code, size: 18),
-                    label: const Text('Print Labels'),
-                    onPressed: () {
-                      final selectedOrders = _orders.where((o) => _selectedIds.contains(o['id'])).toList();
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => BarcodePrintScreen(orders: selectedOrders)));
-                    },
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
-                    label: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                    onPressed: _bulkCancel,
-                  ),
-                ],
-              ),
-            ),
           const Divider(height: 1, color: AppColors.border),
           Expanded(
             child: _loading
