@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
+import '../widgets/compact_time_picker.dart';
 
 class OrderEditScreen extends StatefulWidget {
   final String orderId;
@@ -332,7 +333,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     title: Text(_windowStart == null ? 'After' : _windowStart!.format(context)),
                     trailing: const Icon(Icons.access_time, size: 18),
                     onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _windowStart ?? TimeOfDay.now());
+                      final picked = await showCompactTimePicker(context: context, initialTime: _windowStart ?? TimeOfDay.now());
                       if (picked != null) setState(() => _windowStart = picked);
                     },
                   ),
@@ -344,7 +345,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     title: Text(_windowEnd == null ? 'Before' : _windowEnd!.format(context)),
                     trailing: const Icon(Icons.access_time, size: 18),
                     onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _windowEnd ?? TimeOfDay.now());
+                      final picked = await showCompactTimePicker(context: context, initialTime: _windowEnd ?? TimeOfDay.now());
                       if (picked != null) setState(() => _windowEnd = picked);
                     },
                   ),

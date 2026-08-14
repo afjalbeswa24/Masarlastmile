@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
+import 'compact_time_picker.dart';
 
 class OrderFilters {
   Set<String> statuses = {};
@@ -303,7 +304,7 @@ class _FilterBarState extends State<FilterBar> {
             widget.filters.beforeTimeHour = null;
             widget.onChanged(widget.filters);
           } else if (action == 'pick') {
-            final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+            final picked = await showCompactTimePicker(context: context, initialTime: TimeOfDay.now());
             if (picked != null) {
               widget.filters.beforeTimeHour = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
               widget.onChanged(widget.filters);

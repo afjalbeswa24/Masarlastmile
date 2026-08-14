@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
+import '../widgets/compact_time_picker.dart';
 
 class NewTaskScreen extends StatefulWidget {
   const NewTaskScreen({super.key});
@@ -196,7 +197,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                       title: Text(_windowStart == null ? 'After' : _windowStart!.format(context)),
                       trailing: const Icon(Icons.access_time, size: 18),
                       onTap: () async {
-                        final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                        final picked = await showCompactTimePicker(context: context, initialTime: TimeOfDay.now());
                         if (picked != null) setState(() => _windowStart = picked);
                       },
                     ),
@@ -208,7 +209,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                       title: Text(_windowEnd == null ? 'Before' : _windowEnd!.format(context)),
                       trailing: const Icon(Icons.access_time, size: 18),
                       onTap: () async {
-                        final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                        final picked = await showCompactTimePicker(context: context, initialTime: TimeOfDay.now());
                         if (picked != null) setState(() => _windowEnd = picked);
                       },
                     ),
