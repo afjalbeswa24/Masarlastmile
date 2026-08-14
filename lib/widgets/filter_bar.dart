@@ -304,6 +304,7 @@ class _FilterBarState extends State<FilterBar> {
             widget.filters.beforeTimeHour = null;
             widget.onChanged(widget.filters);
           } else if (action == 'pick') {
+            if (!context.mounted) return;
             final picked = await showCompactTimePicker(context: context, initialTime: TimeOfDay.now());
             if (picked != null) {
               widget.filters.beforeTimeHour = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
