@@ -183,7 +183,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                     pw.Container(
                       padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
-                      child: pw.Text('COD', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7)),
+                      child: pw.Text('COD $codAmount', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7)),
                     ),
                 ],
               ),
@@ -374,7 +374,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(border: Border.all(color: Colors.black45), borderRadius: BorderRadius.circular(4)),
-                    child: const Text('COD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                    child: Text('COD $codAmount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
                   ),
               ],
             ),
