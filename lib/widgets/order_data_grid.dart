@@ -59,7 +59,6 @@ class _OrderDataGridState extends State<OrderDataGrid> {
   static const double _rowHeight = 52;
   static const double _headerHeight = 44;
   static const double _checkboxWidth = 44;
-  static const double _actionWidth = 44;
 
   String? _sortKey;
   bool _sortAscending = true;
@@ -146,7 +145,14 @@ class _OrderDataGridState extends State<OrderDataGrid> {
     _ColDef(
       key: 'awb', label: 'AWB', width: 140, sortable: true,
       sortValue: (o) => (o['order_code'] ?? '') as String,
-      cellBuilder: (ctx, o) => Text(o['order_code'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+      cellBuilder: (ctx, o) => InkWell(
+        onTap: () => widget.onEdit(o),
+        child: Text(
+          o['order_code'] ?? '',
+          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.purple, decoration: TextDecoration.underline),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
     ),
     _ColDef(
       key: 'company', label: 'Company', width: 100, sortable: true,
@@ -269,7 +275,7 @@ class _OrderDataGridState extends State<OrderDataGrid> {
   static String _fmtDateTime(String? iso) {
     if (iso == null) return '—';
     final d = QatarTime.fromIso(iso);
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
   static String _punctualityOf(Map<String, dynamic> o) {
@@ -434,7 +440,7 @@ class _OrderDataGridState extends State<OrderDataGrid> {
 
     final showLocationColumn = widget.onViewLocation != null;
     final frozenWidth = _checkboxWidth + (showLocationColumn ? 44 : 0) + frozenCols.fold<double>(0, (sum, c) => sum + c.width);
-    final scrollableWidth = scrollCols.fold<double>(0, (sum, c) => sum + c.width) + _actionWidth;
+    final scrollableWidth = scrollCols.fold<double>(0, (sum, c) => sum + c.width);
 
     final allSelected = widget.orders.isNotEmpty && widget.selectedIds.length == widget.orders.length;
 
@@ -562,7 +568,6 @@ class _OrderDataGridState extends State<OrderDataGrid> {
                                 child: Row(
                                   children: [
                                     ...scrollCols.map(_headerCell),
-                                    SizedBox(width: _actionWidth, height: _headerHeight),
                                   ],
                                 ),
                               ),
@@ -587,15 +592,6 @@ class _OrderDataGridState extends State<OrderDataGrid> {
                                           child: Row(
                                             children: [
                                               ...scrollCols.map((c) => _dataCell(c, order)),
-                                              SizedBox(
-                                                width: _actionWidth,
-                                                height: _rowHeight,
-                                                child: IconButton(
-                                                  padding: EdgeInsets.zero,
-                                                  icon: const Icon(Icons.edit, size: 16, color: AppColors.textSecondary),
-                                                  onPressed: () => widget.onEdit(order),
-                                                ),
-                                              ),
                                             ],
                                           ),
                                         );
