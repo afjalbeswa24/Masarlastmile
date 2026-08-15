@@ -140,6 +140,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _awbPrefixController;
+  late TextEditingController _addressController;
   late String _role;
   late bool _canManageUsers;
   bool _saving = false;
@@ -152,6 +153,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
     _nameController = TextEditingController(text: widget.user['full_name'] ?? '');
     _phoneController = TextEditingController(text: widget.user['phone'] ?? '');
     _awbPrefixController = TextEditingController(text: widget.user['awb_prefix'] ?? '');
+    _addressController = TextEditingController(text: widget.user['address'] ?? '');
     _role = widget.user['role'] ?? 'driver';
     _canManageUsers = widget.user['can_manage_users'] == true;
   }
@@ -181,6 +183,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
         updates['can_manage_users'] = _role == 'dispatcher' ? _canManageUsers : false;
         if (_role == 'merchant') {
           updates['awb_prefix'] = _awbPrefixController.text.trim().toUpperCase();
+          updates['address'] = _addressController.text.trim();
         }
       }
 
@@ -370,6 +373,16 @@ class _EditUserSheetState extends State<_EditUserSheet> {
                     hintText: 'e.g. NTP',
                     border: OutlineInputBorder(),
                     counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _addressController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    hintText: 'Used on detailed print labels',
+                    border: OutlineInputBorder(),
                   ),
                 ),
               ],

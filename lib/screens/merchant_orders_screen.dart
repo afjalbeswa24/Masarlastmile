@@ -75,7 +75,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       id, order_code, order_number, status, consignee_name, phone, full_address, city,
       quantity, cod_amount, delivery_date, delivery_window_start, delivery_window_end,
       notes, proof_photo_url, proof_photo_url_2,
-      delivery_type, remote_area,
+      delivery_type, remote_area, merchant_id,
       merchant:profiles!orders_merchant_id_fkey(full_name),
       company:companies(name)
     ''').eq('merchant_id', merchantId);
