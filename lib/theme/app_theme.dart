@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const navy = Color(0xFF1E2A3A);
-  static const purple = Color(0xFF6C4FCE);
-  static const purpleLight = Color(0xFFEDE7F9);
+  static const navy = Color(0xFF0B2B2B);
+  static const purple = Color(0xFF0D9488);
+  static const purpleLight = Color(0xFFE3F5F1);
   static const background = Color(0xFFF7F8FA);
   static const border = Color(0xFFE3E6EA);
   static const rowDivider = Color(0xFFCDD3DA);
@@ -14,8 +14,8 @@ class AppColors {
   static const statusPickedUp = Color(0xFF2F80ED);
   static const statusSorted = Color(0xFF9B51E0);
   static const statusAssigned = Color(0xFFF2994A);
-  static const statusOutForDelivery = Color(0xFF6C4FCE);
-  static const statusDelivered = Color(0xFF27AE60);
+  static const statusOutForDelivery = Color(0xFF2563EB);
+  static const statusDelivered = Color(0xFF16A34A);
   static const statusFailed = Color(0xFFEB5757);
   static const statusCancelled = Color(0xFF4F4F4F);
   static const statusRescheduled = Color(0xFF2D9CDB);
