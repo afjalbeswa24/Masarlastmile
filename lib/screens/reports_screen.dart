@@ -20,6 +20,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   bool _loading = true;
   List<Map<String, dynamic>> _orders = [];
   int _totalBoxes = 0;
+  Map<String, int> _boxesByMerchant = {};
 
   @override
   void initState() {
@@ -175,20 +176,23 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final merchantId = o['merchant_id'] as String?;
       if (merchantId == null) continue;
       final name = o['merchant']?['full_name'] ?? 'Unnamed';
-      byMerchant.putIfAbsent(merchantId, () => {'name': name, 'total': 0, 'delivered': 0, 'failed': 0, 'cancelled': 0, 'cod': 0.0});
+      byMerchant.putIfAbsent(merchantId, () => {'name': name, 'total': 0, 'delivered': 0, 'failed': 0, 'returned': 0, 'cancelled': 0, 'cod': 0.0});
       final entry = byMerchant[merchantId]!;
       entry['total']++;
       if (o['status'] == 'delivered') entry['delivered']++;
       if (o['status'] == 'failed') entry['failed']++;
+      if (o['status'] == 'returned_to_shipper') entry['returned']++;
       if (o['status'] == 'cancelled') entry['cancelled']++;
       entry['cod'] += (o['cod_amount'] ?? 0).toDouble();
     }
 
-    final rows = byMerchant.values.map((r) {
-      return [r['name'].toString(), '${r['total']}', '${r['delivered']}', '${r['failed']}', '${r['cancelled']}', (r['cod'] as double).toStringAsFixed(2)];
+    final rows = byMerchant.entries.map((e) {
+      final r = e.value;
+      final boxes = _boxesByMerchant[e.key] ?? 0;
+      return [r['name'].toString(), '${r['total']}', '$boxes', '${r['delivered']}', '${r['failed']}', '${r['returned']}', '${r['cancelled']}', (r['cod'] as double).toStringAsFixed(2)];
     }).toList();
 
-    await _exportSheet('Merchant_Volume', ['Merchant', 'Total Orders', 'Delivered', 'Failed', 'Cancelled', 'Total COD Value'], rows);
+    await _exportSheet('Merchant_Volume', ['Merchant', 'Total Orders', 'Boxes', 'Delivered', 'Failed', 'Returned', 'Cancelled', 'Total COD Value'], rows);
   }
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -221,9 +225,26 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final boxes = await boxQuery;
     boxCount = List.from(boxes).length;
 
+    // Same idea, but broken down per merchant — needed for the Merchant
+    // Volume report's box count column.
+    var merchantBoxQuery = supabase.from('order_boxes').select('id, orders!inner(delivery_date, merchant_id)');
+    if (_dateRange != null) {
+      merchantBoxQuery = merchantBoxQuery
+          .gte('orders.delivery_date', _fmtDate(_dateRange!.start))
+          .lte('orders.delivery_date', _fmtDate(_dateRange!.end));
+    }
+    final merchantBoxes = await merchantBoxQuery;
+    final boxesByMerchant = <String, int>{};
+    for (final b in List.from(merchantBoxes)) {
+      final merchantId = b['orders']?['merchant_id'] as String?;
+      if (merchantId == null) continue;
+      boxesByMerchant[merchantId] = (boxesByMerchant[merchantId] ?? 0) + 1;
+    }
+
     setState(() {
       _orders = List<Map<String, dynamic>>.from(data);
       _totalBoxes = boxCount;
+      _boxesByMerchant = boxesByMerchant;
       _loading = false;
     });
   }
@@ -552,15 +573,20 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final name = o['merchant']?['full_name'] ?? 'Unnamed';
 
       byMerchant.putIfAbsent(merchantId, () => {
-        'name': name, 'total': 0, 'delivered': 0, 'failed': 0, 'cancelled': 0, 'cod': 0.0,
+        'name': name, 'total': 0, 'delivered': 0, 'failed': 0, 'returned': 0, 'cancelled': 0, 'cod': 0.0,
       });
 
       final entry = byMerchant[merchantId]!;
       entry['total']++;
       if (o['status'] == 'delivered') entry['delivered']++;
       if (o['status'] == 'failed') entry['failed']++;
+      if (o['status'] == 'returned_to_shipper') entry['returned']++;
       if (o['status'] == 'cancelled') entry['cancelled']++;
       entry['cod'] += (o['cod_amount'] ?? 0).toDouble();
+    }
+
+    for (final entry in byMerchant.entries) {
+      entry.value['boxes'] = _boxesByMerchant[entry.key] ?? 0;
     }
 
     final rows = byMerchant.values.toList()
@@ -579,8 +605,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           columns: const [
             DataColumn(label: Text('Merchant')),
             DataColumn(label: Text('Total Orders')),
+            DataColumn(label: Text('Boxes')),
             DataColumn(label: Text('Delivered')),
             DataColumn(label: Text('Failed')),
+            DataColumn(label: Text('Returned')),
             DataColumn(label: Text('Cancelled')),
             DataColumn(label: Text('Total COD Value')),
           ],
@@ -588,8 +616,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             return DataRow(cells: [
               DataCell(Text(r['name'], style: const TextStyle(fontWeight: FontWeight.w600))),
               DataCell(Text('${r['total']}')),
+              DataCell(Text('${r['boxes']}')),
               DataCell(Text('${r['delivered']}', style: const TextStyle(color: AppColors.statusDelivered))),
               DataCell(Text('${r['failed']}', style: const TextStyle(color: AppColors.statusFailed))),
+              DataCell(Text('${r['returned']}', style: const TextStyle(color: AppColors.statusReturnedToShipper))),
               DataCell(Text('${r['cancelled']}', style: const TextStyle(color: AppColors.textSecondary))),
               DataCell(Text((r['cod'] as double).toStringAsFixed(0))),
             ]);
