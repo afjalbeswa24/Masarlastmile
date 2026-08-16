@@ -82,38 +82,64 @@ class _FilterBarState extends State<FilterBar> {
     required Set<String> selected,
   }) async {
     final tempSelection = Set<String>.from(selected);
+    String searchQuery = '';
 
     final result = await showDialog<Set<String>>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final visibleOptions = searchQuery.trim().isEmpty
+                ? options
+                : options.where((opt) => opt.value.toLowerCase().contains(searchQuery.trim().toLowerCase())).toList();
+
             return AlertDialog(
               title: Text(title),
               content: SizedBox(
                 width: 320,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: options.map((opt) {
-                      final checked = tempSelection.contains(opt.key);
-                      return CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(opt.value),
-                        value: checked,
-                        onChanged: (v) {
-                          setDialogState(() {
-                            if (v == true) {
-                              tempSelection.add(opt.key);
-                            } else {
-                              tempSelection.remove(opt.key);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search $title',
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onChanged: (v) => setDialogState(() => searchQuery = v),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 320,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: visibleOptions.isEmpty
+                              ? [const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('No matches', style: TextStyle(color: AppColors.textSecondary)))]
+                              : visibleOptions.map((opt) {
+                                  final checked = tempSelection.contains(opt.key);
+                                  return CheckboxListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(opt.value),
+                                    value: checked,
+                                    onChanged: (v) {
+                                      setDialogState(() {
+                                        if (v == true) {
+                                          tempSelection.add(opt.key);
+                                        } else {
+                                          tempSelection.remove(opt.key);
+                                        }
+                                      });
+                                    },
+                                  );
+                                }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               actions: [
