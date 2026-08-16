@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_pill.dart';
 import '../widgets/scan_input.dart';
 import '../utils/box_scan_service.dart';
 
 class WarehousePackageInfoTab extends StatefulWidget {
-  const WarehousePackageInfoTab({super.key});
+  final MobileScannerController controller;
+  const WarehousePackageInfoTab({super.key, required this.controller});
 
   @override
   State<WarehousePackageInfoTab> createState() => _WarehousePackageInfoTabState();
@@ -102,6 +104,7 @@ class _WarehousePackageInfoTabState extends State<WarehousePackageInfoTab> {
           if (_scanning)
             ScanInput(
               height: 220,
+              controller: widget.controller,
               onScan: (code) {
                 _searchController.text = code;
                 _lookup(code);

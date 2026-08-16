@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
 import '../widgets/scan_mode_settings_tile.dart';
@@ -15,17 +16,47 @@ class WarehouseHomeScreen extends StatefulWidget {
 
 class _WarehouseHomeScreenState extends State<WarehouseHomeScreen> {
   int _tabIndex = 0;
+  // Package Info and Sorting both need the camera. Previously each tab
+  // created its own MobileScannerController, and switching between them
+  // raced to grab the camera hardware before the other tab had released
+  // it — sharing one controller here removes that conflict entirely.
+  final MobileScannerController _scannerController = MobileScannerController(autoStart: false);
 
   final _titles = ['Home', 'Package Info', 'Sorting', 'More'];
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _setTab(int i) async {
+    final needsCamera = i == 1 || i == 2;
+    final hadCamera = _tabIndex == 1 || _tabIndex == 2;
+    setState(() => _tabIndex = i);
+    if (needsCamera && !hadCamera) {
+      try {
+        await _scannerController.start();
+      } catch (_) {
+        // Already running — ignore
+      }
+    } else if (!needsCamera && hadCamera) {
+      try {
+        await _scannerController.stop();
+      } catch (_) {
+        // Already stopped — ignore
+      }
+    }
+  }
 
   Widget _buildTab() {
     switch (_tabIndex) {
       case 0:
         return const WarehouseHomeTab();
       case 1:
-        return const WarehousePackageInfoTab();
+        return WarehousePackageInfoTab(controller: _scannerController);
       case 2:
-        return const WarehouseSortTab();
+        return WarehouseSortTab(controller: _scannerController);
       default:
         return _MoreTab();
     }
@@ -43,7 +74,7 @@ class _WarehouseHomeScreenState extends State<WarehouseHomeScreen> {
       body: _buildTab(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabIndex,
-        onDestinationSelected: (i) => setState(() => _tabIndex = i),
+        onDestinationSelected: _setTab,
         indicatorColor: AppColors.purpleLight,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: AppColors.purple), label: 'Home'),

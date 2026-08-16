@@ -6,34 +6,22 @@ import '../widgets/scan_input.dart';
 import 'warehouse_sort_detail_screen.dart';
 
 class WarehouseSortTab extends StatefulWidget {
-  const WarehouseSortTab({super.key});
+  final MobileScannerController controller;
+  const WarehouseSortTab({super.key, required this.controller});
 
   @override
   State<WarehouseSortTab> createState() => _WarehouseSortTabState();
 }
 
 class _WarehouseSortTabState extends State<WarehouseSortTab> {
-  final MobileScannerController _scannerController = MobileScannerController(autoStart: false);
   bool _processing = false;
   bool _scanning = true;
   String? _lastMessage;
   final List<Map<String, String>> _recentlySorted = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _safeStart();
-  }
-
-  @override
-  void dispose() {
-    _scannerController.dispose();
-    super.dispose();
-  }
-
   Future<void> _safeStart() async {
     try {
-      await _scannerController.start();
+      await widget.controller.start();
     } catch (_) {
       // Already running or camera still releasing from another tab — ignore
     }
@@ -41,7 +29,7 @@ class _WarehouseSortTabState extends State<WarehouseSortTab> {
 
   Future<void> _safeStop() async {
     try {
-      await _scannerController.stop();
+      await widget.controller.stop();
     } catch (_) {
       // Already stopped — ignore
     }
@@ -117,7 +105,7 @@ class _WarehouseSortTabState extends State<WarehouseSortTab> {
       color: AppColors.background,
       child: Column(
         children: [
-          ScanInput(height: 280, controller: _scannerController, onScan: _handleScan),
+          ScanInput(height: 280, controller: widget.controller, onScan: _handleScan),
           if (_lastMessage != null)
             Container(
               width: double.infinity,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../theme/app_theme.dart';
@@ -22,8 +23,10 @@ class ScanInput extends StatefulWidget {
 class _ScanInputState extends State<ScanInput> {
   final _laserController = TextEditingController();
   final _laserFocusNode = FocusNode();
+  Timer? _autoSubmitTimer;
 
   void _submitLaser(String value) {
+    _autoSubmitTimer?.cancel();
     final trimmed = value.trim();
     if (trimmed.isNotEmpty) {
       widget.onScan(trimmed);
@@ -32,8 +35,22 @@ class _ScanInputState extends State<ScanInput> {
     _laserFocusNode.requestFocus();
   }
 
+  void _onLaserChanged(String value) {
+    // Handheld scanners type each character near-instantly (a real person
+    // typing this fast is essentially impossible), then either send an
+    // Enter keystroke or just stop. Rather than require that Enter arrives,
+    // treat a short pause with no further keystrokes as "scan complete"
+    // and submit automatically.
+    _autoSubmitTimer?.cancel();
+    if (value.trim().isEmpty) return;
+    _autoSubmitTimer = Timer(const Duration(milliseconds: 150), () {
+      _submitLaser(_laserController.text);
+    });
+  }
+
   @override
   void dispose() {
+    _autoSubmitTimer?.cancel();
     _laserController.dispose();
     _laserFocusNode.dispose();
     super.dispose();
@@ -76,6 +93,7 @@ class _ScanInputState extends State<ScanInput> {
                     hintStyle: const TextStyle(color: Colors.white60),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                   ),
+                  onChanged: _onLaserChanged,
                   onSubmitted: _submitLaser,
                   textInputAction: TextInputAction.done,
                   // Handle scanners configured to send Tab instead of Enter

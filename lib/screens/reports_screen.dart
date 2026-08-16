@@ -19,6 +19,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   DateTimeRange? _dateRange;
   bool _loading = true;
   List<Map<String, dynamic>> _orders = [];
+  int _totalBoxes = 0;
 
   @override
   void initState() {
@@ -79,7 +80,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final total = _orders.length;
     final delivered = _orders.where((o) => o['status'] == 'delivered').length;
     final failed = _orders.where((o) => o['status'] == 'failed').length;
-    final pending = _orders.where((o) => !['delivered', 'failed', 'cancelled'].contains(o['status'])).length;
+    final returned = _orders.where((o) => o['status'] == 'returned_to_shipper').length;
+    final pending = _orders.where((o) => !['delivered', 'failed', 'cancelled', 'returned_to_shipper'].contains(o['status'])).length;
     final cancelled = _orders.where((o) => o['status'] == 'cancelled').length;
 
     int onTime = 0, early = 0, late = 0;
@@ -97,9 +99,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
     await _exportSheet('Daily_Summary', ['Metric', 'Value'], [
       ['Total Orders', '$total'],
+      ['Total Boxes', '$_totalBoxes'],
       ['Delivered', '$delivered'],
       ['Failed', '$failed'],
       ['Pending', '$pending'],
+      ['Returned to Shipper', '$returned'],
       ['Cancelled', '$cancelled'],
       ['On Time', '$onTime'],
       ['Early', '$early'],
@@ -204,8 +208,22 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
     final data = await query;
 
+    // Count boxes for orders in this date range via a server-side join,
+    // instead of passing every matching order id through the URL — that
+    // approach silently fails once a date range covers hundreds of orders.
+    int boxCount = 0;
+    var boxQuery = supabase.from('order_boxes').select('id, orders!inner(delivery_date)');
+    if (_dateRange != null) {
+      boxQuery = boxQuery
+          .gte('orders.delivery_date', _fmtDate(_dateRange!.start))
+          .lte('orders.delivery_date', _fmtDate(_dateRange!.end));
+    }
+    final boxes = await boxQuery;
+    boxCount = List.from(boxes).length;
+
     setState(() {
       _orders = List<Map<String, dynamic>>.from(data);
+      _totalBoxes = boxCount;
       _loading = false;
     });
   }
@@ -322,7 +340,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final total = _orders.length;
     final delivered = _orders.where((o) => o['status'] == 'delivered').length;
     final failed = _orders.where((o) => o['status'] == 'failed').length;
-    final pending = _orders.where((o) => !['delivered', 'failed', 'cancelled'].contains(o['status'])).length;
+    final returned = _orders.where((o) => o['status'] == 'returned_to_shipper').length;
+    final pending = _orders.where((o) => !['delivered', 'failed', 'cancelled', 'returned_to_shipper'].contains(o['status'])).length;
     final cancelled = _orders.where((o) => o['status'] == 'cancelled').length;
 
     int onTime = 0, early = 0, late = 0;
@@ -348,11 +367,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             children: [
               Expanded(child: _statTile('Total', '$total')),
               const SizedBox(width: 8),
+              Expanded(child: _statTile('Boxes', '$_totalBoxes')),
+              const SizedBox(width: 8),
               Expanded(child: _statTile('Delivered', '$delivered', color: AppColors.statusDelivered)),
               const SizedBox(width: 8),
               Expanded(child: _statTile('Failed', '$failed', color: AppColors.statusFailed)),
               const SizedBox(width: 8),
               Expanded(child: _statTile('Pending', '$pending', color: AppColors.statusAssigned)),
+              const SizedBox(width: 8),
+              Expanded(child: _statTile('Returned', '$returned', color: AppColors.statusReturnedToShipper)),
               const SizedBox(width: 8),
               Expanded(child: _statTile('Cancelled', '$cancelled', color: AppColors.textSecondary)),
             ],
