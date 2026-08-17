@@ -543,8 +543,22 @@ class _SkylineRoutePainter extends CustomPainter {
     if (parcelTangent == null) return;
 
     if (t <= _travelEnd) {
-      var angle = parcelTangent.angle;
-      angle = angle.clamp(-0.25, 0.25);
+      // Average the heading over a wider span of the curve (not just the
+      // exact local tangent) so the truck banks gently through this fairly
+      // wavy route instead of snapping toward whatever the curve is doing
+      // at this exact instant.
+      final behindDist = (travelled - 16).clamp(0.0, total);
+      final aheadDist = (travelled + 16).clamp(0.0, total);
+      final behindTangent = metric.getTangentForOffset(behindDist);
+      final aheadTangent = metric.getTangentForOffset(aheadDist);
+      double angle;
+      if (behindTangent != null && aheadTangent != null) {
+        final delta = aheadTangent.position - behindTangent.position;
+        angle = atan2(delta.dy, delta.dx);
+      } else {
+        angle = parcelTangent.angle;
+      }
+      angle = angle.clamp(-0.13, 0.13); // ~ ±7.5°, was ±14.3°
       _drawVan(canvas, parcelTangent.position, angle, fade);
     } else {
       final endTangent = metric.getTangentForOffset(total);
@@ -591,24 +605,46 @@ class _SkylineRoutePainter extends CustomPainter {
 
     canvas.drawCircle(Offset.zero, 20, Paint()..color = _Palette.gold.withValues(alpha: 0.22 * fade)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
 
-    // Body.
-    final body = RRect.fromRectAndRadius(const Rect.fromLTWH(-22, -10, 44, 20), const Radius.circular(5));
-    canvas.drawRRect(body, Paint()..color = _Palette.pearl.withValues(alpha: 0.96 * fade));
-    // Cab.
-    final cab = RRect.fromRectAndRadius(const Rect.fromLTWH(7, -16, 13, 13), const Radius.circular(3));
-    canvas.drawRRect(cab, Paint()..color = _Palette.pearl.withValues(alpha: 0.96 * fade));
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(10, -13.5, 7, 7.5), const Radius.circular(1.4)), Paint()..color = _Palette.ink.withValues(alpha: 0.7 * fade));
-    // Gold livery stripe with the EE monogram — Essence Express branding.
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-17, -4.5, 15, 9), const Radius.circular(2)), Paint()..color = _Palette.gold.withValues(alpha: 0.95 * fade));
+    // Cargo box — matches the truck silhouette in the MASAR app icon:
+    // one long box body, ESSENCE printed on the side, gold roof accent.
+    final cargoRect = const Rect.fromLTWH(-27, -16, 38, 28);
+    canvas.drawRRect(RRect.fromRectAndRadius(cargoRect, const Radius.circular(3)), Paint()..color = _Palette.pearl.withValues(alpha: 0.96 * fade));
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(const Rect.fromLTWH(-27, -16, 38, 6), topLeft: const Radius.circular(3), topRight: const Radius.circular(3)),
+      Paint()..color = _Palette.gold.withValues(alpha: 0.95 * fade),
+    );
     final tp = TextPainter(
-      text: TextSpan(text: 'EE', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 7, fontWeight: FontWeight.w700, color: _Palette.ink.withValues(alpha: fade))),
+      text: TextSpan(text: 'ESSENCE', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 7.5, fontWeight: FontWeight.w700, letterSpacing: 0.3, color: _Palette.ink.withValues(alpha: fade))),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(-17 + (15 - tp.width) / 2, -4.5 + (9 - tp.height) / 2));
+    tp.paint(canvas, Offset(-8 - tp.width / 2, 1 - tp.height / 2));
+
+    // Cab.
+    final cabPath = Path()
+      ..moveTo(11, 12)
+      ..lineTo(11, -8)
+      ..quadraticBezierTo(11, -13, 16, -13)
+      ..lineTo(25, -13)
+      ..quadraticBezierTo(29, -13, 30.5, -9)
+      ..lineTo(33, 2)
+      ..lineTo(33, 12)
+      ..close();
+    canvas.drawPath(cabPath, Paint()..color = _Palette.pearl.withValues(alpha: 0.96 * fade));
+    final windowPath = Path()
+      ..moveTo(15.5, -10.5)
+      ..lineTo(24, -10.5)
+      ..quadraticBezierTo(26.5, -10.5, 27.5, -8)
+      ..lineTo(29, -3)
+      ..lineTo(15.5, -3)
+      ..close();
+    canvas.drawPath(windowPath, Paint()..color = _Palette.ink.withValues(alpha: 0.78 * fade));
+
     // Wheels.
     final wheel = Paint()..color = const Color(0xFF0B1F1B).withValues(alpha: fade);
-    canvas.drawCircle(const Offset(-12, 12.5), 5, wheel);
-    canvas.drawCircle(const Offset(12, 12.5), 5, wheel);
+    canvas.drawCircle(const Offset(-15, 14), 6.2, wheel);
+    canvas.drawCircle(const Offset(22, 14), 6.2, wheel);
+    canvas.drawCircle(const Offset(-15, 14), 2.4, Paint()..color = const Color(0xFF555555).withValues(alpha: fade));
+    canvas.drawCircle(const Offset(22, 14), 2.4, Paint()..color = const Color(0xFF555555).withValues(alpha: fade));
 
     canvas.restore();
   }
