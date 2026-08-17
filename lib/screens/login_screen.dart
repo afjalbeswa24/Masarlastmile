@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,13 +19,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Drives the van along its dispatch route.
+  // Drives the parcel through its delivery stages.
   late final AnimationController _routeController;
 
   @override
   void initState() {
     super.initState();
-    _routeController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
+    _routeController = AnimationController(vsync: this, duration: const Duration(seconds: 7))..repeat();
   }
 
   @override
@@ -119,13 +120,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
             ),
 
-            // -- Live dispatch route, the signature element ------------------
+            // -- Live delivery progress, the signature element ---------------
             Expanded(
               child: AnimatedBuilder(
                 animation: _routeController,
                 builder: (context, _) {
                   return CustomPaint(
-                    painter: _DispatchRoutePainter(_routeController.value),
+                    painter: _DeliveryProgressPainter(_routeController.value),
                     size: Size.infinite,
                   );
                 },
@@ -195,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             ),
             const SizedBox(width: 6),
             Text(
-              '6 ZONES LIVE',
+              'LIVE DISPATCH',
               style: TextStyle(
                 fontFamily: 'JetBrainsMono',
                 fontSize: 10,
@@ -292,8 +293,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             );
           }
           // Narrow window (or the driver/warehouse app running on a phone):
-          // drop the route animation and give a compact header instead of
-          // squeezing the full brand panel.
+          // drop the progress animation and give a compact header instead
+          // of squeezing the full brand panel.
           return Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -351,45 +352,44 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 }
 
 // ---------------------------------------------------------------------------
-// Live dispatch route — the brand panel's signature element.
-// An abstract winding route (not tied to real geography, so it can't look
-// "broken" the way a hand-traced map can) with six zone stops pulled from
-// the ops dashboard, including Al Khor. A van drives the full route on a
-// loop, leaving a brightened trail behind it. It's drawn side-view, so it
-// mirrors horizontally rather than rotating past vertical, and only ever
-// tilts slightly — keeping it right-side-up at every point on the curve.
+// Live delivery progress — the brand panel's signature element.
+// A parcel travels left to right along a curved route through the same
+// stages your Orders view already uses, lighting up each checkpoint as it
+// passes, then celebrates with a checkmark at "Delivered" before fading
+// and looping. No geography involved, so nothing here can look "broken."
 // ---------------------------------------------------------------------------
 
-class _RouteStop {
+class _Checkpoint {
   final String label;
-  final double t; // fraction along the route, 0..1
-  final bool isHub;
-  const _RouteStop(this.label, this.t, {this.isHub = false});
+  final double t; // fraction along the curve, 0..1
+  const _Checkpoint(this.label, this.t);
 }
 
-const _routeStops = [
-  _RouteStop('AL KHOR', 0.04),
-  _RouteStop('LUSAIL', 0.20),
-  _RouteStop('AL RAYYAN', 0.38),
-  _RouteStop('DOHA CENTRAL', 0.56, isHub: true),
-  _RouteStop('BARWA CITY', 0.78),
-  _RouteStop('AL WUKAIR', 0.96),
+const _checkpoints = [
+  _Checkpoint('PICKED UP', 0.04),
+  _Checkpoint('IN TRANSIT', 0.36),
+  _Checkpoint('OUT FOR DELIVERY', 0.68),
+  _Checkpoint('DELIVERED', 0.97),
 ];
 
-class _DispatchRoutePainter extends CustomPainter {
+class _DeliveryProgressPainter extends CustomPainter {
   final double t; // 0..1, looping
-  const _DispatchRoutePainter(this.t);
+  const _DeliveryProgressPainter(this.t);
 
-  // A gentle, guaranteed-smooth S-curve running top to bottom. Built from
-  // cubic beziers rather than traced points, so it can't render "broken"
-  // at odd sizes the way a hand-plotted shape can.
+  // Timing within one loop: the parcel travels for the first 70% of the
+  // cycle, the checkmark celebrates for the next 18%, then everything
+  // fades out over the last 12% so the loop restart is never a visible snap.
+  static const _travelEnd = 0.70;
+  static const _celebrateEnd = 0.88;
+
+  // A gentle left-to-right wave. Built from cubic beziers rather than
+  // traced points, so it stays smooth at any panel size.
   Path _routePath(Size size) {
     final w = size.width, h = size.height;
     final path = Path();
-    path.moveTo(w * 0.22, h * 0.03);
-    path.cubicTo(w * 0.80, h * 0.10, w * 0.02, h * 0.26, w * 0.58, h * 0.34);
-    path.cubicTo(w * 0.98, h * 0.41, w * 0.06, h * 0.53, w * 0.32, h * 0.65);
-    path.cubicTo(w * 0.52, h * 0.75, w * 0.90, h * 0.83, w * 0.56, h * 0.96);
+    path.moveTo(w * 0.03, h * 0.55);
+    path.cubicTo(w * 0.18, h * 0.14, w * 0.32, h * 0.92, w * 0.50, h * 0.50);
+    path.cubicTo(w * 0.68, h * 0.10, w * 0.82, h * 0.90, w * 0.97, h * 0.46);
     return path;
   }
 
@@ -400,11 +400,14 @@ class _DispatchRoutePainter extends CustomPainter {
     // Faint dot-grid texture.
     final gridPaint = Paint()..color = Colors.white.withValues(alpha: 0.045);
     const step = 24.0;
-    for (double x = 0; x < size.width; x += step) {
-      for (double y = 0; y < size.height; y += step) {
-        canvas.drawCircle(Offset(x, y), 1.0, gridPaint);
+    for (double gx = 0; gx < size.width; gx += step) {
+      for (double gy = 0; gy < size.height; gy += step) {
+        canvas.drawCircle(Offset(gx, gy), 1.0, gridPaint);
       }
     }
+
+    final fade = t > _celebrateEnd ? 1.0 - ((t - _celebrateEnd) / (1.0 - _celebrateEnd)) : 1.0;
+    if (fade <= 0.01) return;
 
     final metrics = _routePath(size).computeMetrics().toList();
     if (metrics.isEmpty) return;
@@ -414,7 +417,7 @@ class _DispatchRoutePainter extends CustomPainter {
 
     // Dashed route line.
     final dashPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.16)
+      ..color = Colors.white.withValues(alpha: 0.16 * fade)
       ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -426,107 +429,130 @@ class _DispatchRoutePainter extends CustomPainter {
       d = next + gapLen;
     }
 
-    // Brightened trail behind the van.
-    final travelled = total * t;
+    final travelProgress = Curves.easeInOut.transform((t / _travelEnd).clamp(0.0, 1.0));
+    final travelled = total * travelProgress;
+
+    // Brightened trail behind the parcel.
     canvas.drawPath(
       metric.extractPath(0, travelled),
       Paint()
-        ..color = AppColors.purple.withValues(alpha: 0.55)
+        ..color = AppColors.purple.withValues(alpha: 0.55 * fade)
         ..strokeWidth = 1.8
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
     );
 
-    // Zone stops.
-    for (final stop in _routeStops) {
-      final tangent = metric.getTangentForOffset((stop.t * total).clamp(0, total));
-      if (tangent != null) {
-        _drawStop(canvas, tangent.position, stop.label, isHub: stop.isHub);
-      }
+    // Checkpoints.
+    for (final cp in _checkpoints) {
+      final cpDist = (cp.t * total).clamp(0.0, total);
+      final tangent = metric.getTangentForOffset(cpDist);
+      if (tangent == null) continue;
+      _drawCheckpoint(canvas, tangent, cp.label, reached: cpDist <= travelled + 1, fade: fade);
     }
 
-    // Van.
-    final vanTangent = metric.getTangentForOffset(travelled.clamp(0, total));
-    if (vanTangent != null) {
-      _drawVan(canvas, vanTangent.position, vanTangent.angle);
+    final parcelTangent = metric.getTangentForOffset(travelled.clamp(0.0, total));
+    if (parcelTangent == null) return;
+
+    if (t <= _travelEnd) {
+      _drawParcel(canvas, parcelTangent.position, parcelTangent.angle, fade);
+    } else {
+      final endTangent = metric.getTangentForOffset(total);
+      final endPos = endTangent?.position ?? parcelTangent.position;
+      _drawParcel(canvas, endPos, 0, fade);
+      final celebrate = Curves.easeOutBack.transform(((t - _travelEnd) / (_celebrateEnd - _travelEnd)).clamp(0.0, 1.0));
+      _drawCheckBadge(canvas, endPos, celebrate, fade);
     }
   }
 
-  void _drawStop(Canvas canvas, Offset pos, String label, {required bool isHub}) {
+  void _drawCheckpoint(Canvas canvas, ui.Tangent tangent, String label, {required bool reached, required double fade}) {
+    final pos = tangent.position;
     canvas.drawCircle(
       pos,
-      isHub ? 8 : 4.5,
+      4,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.14)
+        ..color = Colors.white.withValues(alpha: 0.14 * fade)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
-    canvas.drawCircle(pos, isHub ? 3.6 : 2.2, Paint()..color = isHub ? const Color(0xFFF5A623) : Colors.white.withValues(alpha: 0.8));
+    canvas.drawCircle(pos, 2.4, Paint()..color = (reached ? AppColors.purple : Colors.white).withValues(alpha: (reached ? 0.85 : 0.18) * fade));
+
+    // Anchor the label to the outward (upward-biased) side of the curve
+    // so it never sits on top of the route line regardless of the local
+    // tangent direction.
+    var normal = Offset(-tangent.vector.dy, tangent.vector.dx);
+    if (normal.dy > 0) normal = -normal;
+    final normLen = normal.distance == 0 ? 1 : normal.distance;
+    normal = Offset(normal.dx / normLen, normal.dy / normLen);
 
     final tp = TextPainter(
       text: TextSpan(
         text: label,
         style: TextStyle(
           fontFamily: 'JetBrainsMono',
-          fontSize: 8.5,
-          letterSpacing: 0.4,
-          color: Colors.white.withValues(alpha: isHub ? 0.85 : 0.5),
+          fontSize: 9.5,
+          letterSpacing: 0.5,
+          fontWeight: reached ? FontWeight.w600 : FontWeight.w400,
+          color: Colors.white.withValues(alpha: (reached ? 0.9 : 0.4) * fade),
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(pos.dx - tp.width / 2, pos.dy + (isHub ? 12 : 9)));
+    final labelCenter = pos + normal * 14;
+    tp.paint(canvas, Offset(labelCenter.dx - tp.width / 2, labelCenter.dy - tp.height / 2));
   }
 
-  void _drawVan(Canvas canvas, Offset pos, double angle) {
-    // The van icon is side-view (asymmetric top/bottom: roof vs. wheels),
-    // so it must never rotate past vertical or it reads as upside-down.
-    // Mirror horizontally when heading left, and only ever apply a small
-    // tilt — the standard treatment for 2D vehicle sprites following a path.
-    final direction = Offset(cos(angle), sin(angle));
-    final movingLeft = direction.dx < 0;
-    final tilt = atan2(direction.dy, direction.dx.abs()).clamp(-0.45, 0.45);
-
+  void _drawParcel(Canvas canvas, Offset pos, double angle, double fade) {
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
-    if (movingLeft) canvas.scale(-1, 1);
-    canvas.rotate(tilt);
+    canvas.rotate(angle);
 
     // Soft glow.
     canvas.drawCircle(
       Offset.zero,
-      8,
+      9,
       Paint()
-        ..color = AppColors.purple.withValues(alpha: 0.3)
+        ..color = AppColors.purple.withValues(alpha: 0.28 * fade)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
 
-    // Two short trailing speed-lines behind the van.
-    final trailPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..strokeWidth = 1
+    // Box body — a cross-taped parcel is symmetric, so it reads correctly
+    // at any rotation angle (unlike an asymmetric side-view icon).
+    final boxRect = RRect.fromRectAndRadius(const Rect.fromLTWH(-5.5, -5.5, 11, 11), const Radius.circular(2));
+    canvas.drawRRect(boxRect, Paint()..color = Colors.white.withValues(alpha: 0.95 * fade));
+
+    final tapePaint = Paint()
+      ..color = AppColors.navy.withValues(alpha: 0.75 * fade)
+      ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(-9, -1.5), const Offset(-5, -1.5), trailPaint);
-    canvas.drawLine(const Offset(-9, 1.5), const Offset(-6, 1.5), trailPaint..color = Colors.white.withValues(alpha: 0.2));
-
-    // Van body (nose points toward +x, the direction of travel).
-    final bodyRect = RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -3.5, 12, 7), const Radius.circular(2));
-    canvas.drawRRect(bodyRect, Paint()..color = Colors.white.withValues(alpha: 0.95));
-
-    // Windshield hint near the front.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(2.5, -2.3, 3, 4.6), const Radius.circular(1)),
-      Paint()..color = AppColors.navy.withValues(alpha: 0.7),
-    );
-
-    // Wheels.
-    final wheelPaint = Paint()..color = AppColors.navy;
-    canvas.drawCircle(const Offset(-3, 3.8), 1.5, wheelPaint);
-    canvas.drawCircle(const Offset(3, 3.8), 1.5, wheelPaint);
+    canvas.drawLine(const Offset(0, -5.5), const Offset(0, 5.5), tapePaint);
+    canvas.drawLine(const Offset(-5.5, 0), const Offset(5.5, 0), tapePaint);
 
     canvas.restore();
   }
 
+  void _drawCheckBadge(Canvas canvas, Offset pos, double scale, double fade) {
+    if (scale <= 0.01) return;
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy - 16);
+    canvas.scale(scale);
+
+    canvas.drawCircle(Offset.zero, 8, Paint()..color = AppColors.purple.withValues(alpha: fade));
+    final checkPath = Path()
+      ..moveTo(-3.6, 0)
+      ..lineTo(-1, 3)
+      ..lineTo(4, -3.5);
+    canvas.drawPath(
+      checkPath,
+      Paint()
+        ..color = AppColors.navy.withValues(alpha: fade)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+    canvas.restore();
+  }
+
   @override
-  bool shouldRepaint(covariant _DispatchRoutePainter oldDelegate) => oldDelegate.t != t;
+  bool shouldRepaint(covariant _DeliveryProgressPainter oldDelegate) => oldDelegate.t != t;
 }
