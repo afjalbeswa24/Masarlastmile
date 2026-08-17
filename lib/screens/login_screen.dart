@@ -4,7 +4,27 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
-import '../theme/app_theme.dart';
+
+// ---------------------------------------------------------------------------
+// Self-contained palette for this screen. Doesn't depend on AppTheme so it
+// drops in cleanly — fold these into your shared theme later if you want.
+// Inspired by the MASAR app icon's teal gradient, Doha's night skyline, and
+// Qatar's pearl-diving heritage (the signature route below is a pearl strand,
+// not a generic dotted line).
+// ---------------------------------------------------------------------------
+class _Palette {
+  static const nightTeal = Color(0xFF071E1B);
+  static const deepTeal = Color(0xFF0B322C);
+  static const brandTeal = Color(0xFF12A187);
+  static const brandTealLight = Color(0xFF3FD9B4);
+  static const gold = Color(0xFFD9AF61);
+  static const pearl = Color(0xFFF3ECDD);
+  static const ink = Color(0xFF0B322C);
+  static const textSecondary = Color(0xFF6B7A76);
+  static const border = Color(0xFFDFE3E0);
+  static const fieldBg = Color(0xFFFBFCFB);
+  static const danger = Color(0xFFD64545);
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,9 +37,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _rememberMe = true;
   String? _errorMessage;
 
-  // Drives the parcel through its delivery stages.
+  // Drives the van along the pearl-strand route.
   late final AnimationController _routeController;
 
   @override
@@ -52,19 +74,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } catch (e) {
       setState(() => _errorMessage = 'Something went wrong. Try again.');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  InputDecoration _fieldDecoration(String label) {
+  InputDecoration _fieldDecoration(String label, {required IconData icon, Widget? suffix}) {
     return InputDecoration(
       labelText: label,
       isDense: true,
       filled: true,
-      fillColor: AppColors.background,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.purple, width: 1.5)),
+      fillColor: _Palette.fieldBg,
+      prefixIcon: Icon(icon, size: 18, color: _Palette.textSecondary),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _Palette.border)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _Palette.border)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _Palette.brandTeal, width: 1.5)),
     );
   }
 
@@ -75,105 +99,127 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Widget _brandPanel() {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.navy, Color(0xFF060B12)],
+        gradient: RadialGradient(
+          center: Alignment(-0.7, -1),
+          radius: 1.6,
+          colors: [_Palette.deepTeal, _Palette.nightTeal, Color(0xFF04120F)],
+          stops: [0, 0.55, 1],
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(48, 44, 40, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // -- Company wordmark, dominant --------------------------------
-            const Text(
-              'ESSENCE',
-              style: TextStyle(
-                fontFamily: 'SpaceGrotesk',
-                fontSize: 42,
-                height: 1.02,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2,
-                color: Colors.white,
-              ),
-            ),
-            const Text(
-              'EXPRESS',
-              style: TextStyle(
-                fontFamily: 'SpaceGrotesk',
-                fontSize: 42,
-                height: 1.02,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'LAST-MILE LOGISTICS · DOHA, QATAR',
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 11,
-                letterSpacing: 1.4,
-                color: Colors.white.withValues(alpha: 0.55),
-              ),
-            ),
-
-            // -- Live delivery progress, the signature element ---------------
-            Expanded(
-              child: AnimatedBuilder(
-                animation: _routeController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    painter: _DeliveryProgressPainter(_routeController.value),
-                    size: Size.infinite,
-                  );
-                },
-              ),
-            ),
-
-            // -- MASAR app badge + live status -------------------------------
-            Row(
+      child: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _DotGridPainter())),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(44, 44, 40, 30),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 20,
-                  height: 20,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  colorBlendMode: BlendMode.srcIn,
-                ),
-                const SizedBox(width: 8),
                 const Text(
-                  'MASAR',
-                  style: TextStyle(
-                    fontFamily: 'SpaceGrotesk',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2,
-                    color: Colors.white,
-                  ),
+                  'ESSENCE',
+                  style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 38, height: 1.02, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white),
                 ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
-                  width: 1,
-                  height: 12,
-                  color: Colors.white.withValues(alpha: 0.2),
+                const Text(
+                  'EXPRESS',
+                  style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 38, height: 1.02, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text('LAST-MILE LOGISTICS', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11, letterSpacing: 1.6, color: Colors.white.withValues(alpha: 0.55))),
+                    const SizedBox(width: 10),
+                    _flagChip(),
+                  ],
+                ),
+                const SizedBox(height: 22),
                 Text(
-                  'Control tower for last-mile delivery',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.5),
+                  'Every delivery is a pearl on the route.',
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 21, fontWeight: FontWeight.w700, height: 1.28, color: Colors.white.withValues(alpha: 0.95)),
+                ),
+
+                // -- Doha skyline + animated pearl-strand route ------------
+                Expanded(
+                  flex: 3,
+                  child: AnimatedBuilder(
+                    animation: _routeController,
+                    builder: (context, _) => CustomPaint(painter: _SkylineRoutePainter(_routeController.value), size: Size.infinite),
                   ),
                 ),
-                const Spacer(),
-                _liveIndicator(),
+
+                Row(
+                  children: [
+                    _masarBadge(),
+                    const SizedBox(width: 8),
+                    const Text('MASAR', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white)),
+                    Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 12, color: Colors.white.withValues(alpha: 0.2)),
+                    Text('Control tower for last-mile delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Colors.white.withValues(alpha: 0.5))),
+                    const Spacer(),
+                    _liveIndicator(),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.only(top: 16),
+                  decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1)))),
+                  child: Row(
+                    children: [
+                      _feature(Icons.location_on_outlined, 'Real-time tracking', 'Every delivery, live'),
+                      const SizedBox(width: 24),
+                      _feature(Icons.shield_outlined, 'Secure by design', 'Your fleet, protected'),
+                      const SizedBox(width: 24),
+                      _feature(Icons.insights_outlined, 'Smart analytics', 'Insights that ship faster'),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _flagChip() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(7, 3, 9, 3),
+      decoration: BoxDecoration(border: Border.all(color: Colors.white.withValues(alpha: 0.18)), borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 6, height: 6, decoration: const BoxDecoration(shape: BoxShape.circle, color: _Palette.gold)),
+          const SizedBox(width: 6),
+          Text('DOHA, QATAR', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 10, letterSpacing: 1, color: Colors.white.withValues(alpha: 0.6))),
+        ],
+      ),
+    );
+  }
+
+  Widget _masarBadge() {
+    return Image.asset(
+      'assets/images/logo.png',
+      width: 20,
+      height: 20,
+      color: Colors.white.withValues(alpha: 0.85),
+      colorBlendMode: BlendMode.srcIn,
+    );
+  }
+
+  Widget _feature(IconData icon, String title, String subtitle) {
+    return Expanded(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: _Palette.brandTealLight),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -186,24 +232,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.purple.withValues(alpha: 0.45 + pulse * 0.55),
-              ),
-            ),
+            Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: _Palette.brandTealLight.withValues(alpha: 0.45 + pulse * 0.55))),
             const SizedBox(width: 6),
-            Text(
-              'LIVE DISPATCH',
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 10,
-                letterSpacing: 1,
-                color: Colors.white.withValues(alpha: 0.55),
-              ),
-            ),
+            Text('LIVE DISPATCH', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 10, letterSpacing: 1, color: Colors.white.withValues(alpha: 0.55))),
           ],
         );
       },
@@ -214,63 +245,104 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   // Sign-in form (right side, or full screen on narrow layouts)
   // ---------------------------------------------------------------------
 
+  Widget _masarLogo({double size = 60}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.27),
+        boxShadow: [BoxShadow(color: _Palette.brandTeal.withValues(alpha: 0.28), blurRadius: 24, offset: const Offset(0, 10))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.27),
+        child: Image.asset('assets/images/logo.png', width: size, height: size, fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  Widget _formFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _fieldDecoration('Email', icon: Icons.mail_outline)),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          decoration: _fieldDecoration(
+            'Password',
+            icon: Icons.lock_outline,
+            suffix: IconButton(
+              icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18, color: _Palette.textSecondary),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          onSubmitted: (_) => _isLoading ? null : _signIn(),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            InkWell(
+              onTap: () => setState(() => _rememberMe = !_rememberMe),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(value: _rememberMe, activeColor: _Palette.brandTeal, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, onChanged: (v) => setState(() => _rememberMe = v ?? true)),
+                  const SizedBox(width: 2),
+                  const Text('Remember me', style: TextStyle(fontSize: 12.5, color: Color(0xFF4A534F))),
+                ],
+              ),
+            ),
+            TextButton(onPressed: () {}, child: const Text('Forgot password?', style: TextStyle(fontSize: 12.5, color: _Palette.brandTeal, fontWeight: FontWeight.w600))),
+          ],
+        ),
+        const SizedBox(height: 20),
+        if (_errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Text(_errorMessage!, style: const TextStyle(color: _Palette.danger, fontSize: 13)),
+          ),
+        SizedBox(
+          height: 48,
+          child: FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _Palette.brandTeal, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9))),
+            onPressed: _isLoading ? null : _signIn,
+            child: _isLoading
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [Text('Sign in', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)), SizedBox(width: 8), Icon(Icons.arrow_forward, size: 16)],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _loginForm() {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 300),
+          constraints: const BoxConstraints(maxWidth: 340),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'SIGN IN',
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 11,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.purple,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text('Welcome back', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+              Center(child: _masarLogo()),
+              const SizedBox(height: 14),
+              const Text('MASAR', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2, color: _Palette.ink)),
               const SizedBox(height: 4),
-              const Text('Sign in to your account', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              const SizedBox(height: 28),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: _fieldDecoration('Email'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: _fieldDecoration('Password'),
-                onSubmitted: (_) => _isLoading ? null : _signIn(),
-              ),
-              const SizedBox(height: 24),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(_errorMessage!, style: const TextStyle(color: AppColors.statusFailed, fontSize: 13)),
-                ),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.purple,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: _isLoading ? null : _signIn,
-                  child: _isLoading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Sign In'),
-                ),
-              ),
+              const Text('LAST-MILE DELIVERY SYSTEM', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 9.5, letterSpacing: 1.5, color: _Palette.textSecondary)),
+              const SizedBox(height: 26),
+              const Text('Welcome back', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 3),
+              const Text('Sign in to continue to your dashboard', style: TextStyle(fontSize: 13, color: _Palette.textSecondary)),
+              const SizedBox(height: 22),
+              _formFields(),
+              const SizedBox(height: 26),
+              const Text('© 2026 Essence Express  ·  Doha, Qatar', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Color(0xFF9AA39E))),
             ],
           ),
         ),
@@ -283,64 +355,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 800;
+          final isWide = constraints.maxWidth >= 860;
           if (isWide) {
             return Row(
               children: [
-                Expanded(flex: 5, child: _brandPanel()),
-                Expanded(flex: 4, child: _loginForm()),
+                Expanded(flex: 6, child: _brandPanel()),
+                Expanded(flex: 5, child: _loginForm()),
               ],
             );
           }
-          // Narrow window (or the driver/warehouse app running on a phone):
-          // drop the progress animation and give a compact header instead
-          // of squeezing the full brand panel.
+          // Narrow window (or the driver/warehouse app on a phone): a
+          // compact teal header instead of squeezing the full brand panel.
           return Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'ESSENCE EXPRESS',
-                    style: TextStyle(
-                      fontFamily: 'SpaceGrotesk',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'MASAR · LAST-MILE LOGISTICS',
-                    style: TextStyle(
-                      fontFamily: 'JetBrainsMono',
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _fieldDecoration('Email')),
+                  _masarLogo(size: 52),
                   const SizedBox(height: 16),
-                  TextField(controller: _passwordController, obscureText: true, decoration: _fieldDecoration('Password')),
-                  const SizedBox(height: 24),
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(_errorMessage!, style: const TextStyle(color: AppColors.statusFailed)),
-                    ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.purple),
-                      onPressed: _isLoading ? null : _signIn,
-                      child: _isLoading
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Sign In'),
-                    ),
-                  ),
+                  const Text('ESSENCE EXPRESS', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2, color: _Palette.ink)),
+                  const SizedBox(height: 6),
+                  const Text('MASAR · LAST-MILE LOGISTICS · DOHA', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 10, letterSpacing: 1.2, color: _Palette.textSecondary)),
+                  const SizedBox(height: 30),
+                  _formFields(),
                 ],
               ),
             ),
@@ -352,16 +390,35 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 }
 
 // ---------------------------------------------------------------------------
-// Live delivery progress — the brand panel's signature element.
-// A parcel travels left to right along a curved route through the same
-// stages your Orders view already uses, lighting up each checkpoint as it
-// passes, then celebrates with a checkmark at "Delivered" before fading
-// and looping. No geography involved, so nothing here can look "broken."
+// Faint dot-grid texture behind the brand panel.
 // ---------------------------------------------------------------------------
+class _DotGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.045);
+    const step = 24.0;
+    for (double gx = 0; gx < size.width; gx += step) {
+      for (double gy = 0; gy < size.height; gy += step) {
+        canvas.drawCircle(Offset(gx, gy), 1.0, paint);
+      }
+    }
+  }
 
+  @override
+  bool shouldRepaint(covariant _DotGridPainter oldDelegate) => false;
+}
+
+// ---------------------------------------------------------------------------
+// The brand panel's signature element: a stylised Doha night skyline (with
+// the Torch tower silhouette over the Corniche) and a delivery route drawn
+// as a strand of pearls — a nod to Qatar's pearl-diving heritage and to
+// "every mile counts". A van marked EE glides along the strand, lighting
+// each pearl gold as it passes each checkpoint from your Orders view, then
+// the route closes with an opening oyster before fading and looping.
+// ---------------------------------------------------------------------------
 class _Checkpoint {
   final String label;
-  final double t; // fraction along the curve, 0..1
+  final double t;
   const _Checkpoint(this.label, this.t);
 }
 
@@ -372,39 +429,72 @@ const _checkpoints = [
   _Checkpoint('DELIVERED', 0.97),
 ];
 
-class _DeliveryProgressPainter extends CustomPainter {
-  final double t; // 0..1, looping
-  const _DeliveryProgressPainter(this.t);
+class _SkylineRoutePainter extends CustomPainter {
+  final double t;
+  const _SkylineRoutePainter(this.t);
 
-  // Timing within one loop: the parcel travels for the first 70% of the
-  // cycle, the checkmark celebrates for the next 18%, then everything
-  // fades out over the last 12% so the loop restart is never a visible snap.
   static const _travelEnd = 0.70;
   static const _celebrateEnd = 0.88;
 
-  // A gentle left-to-right wave. Built from cubic beziers rather than
-  // traced points, so it stays smooth at any panel size.
   Path _routePath(Size size) {
     final w = size.width, h = size.height;
     final path = Path();
-    path.moveTo(w * 0.03, h * 0.55);
-    path.cubicTo(w * 0.18, h * 0.14, w * 0.32, h * 0.92, w * 0.50, h * 0.50);
-    path.cubicTo(w * 0.68, h * 0.10, w * 0.82, h * 0.90, w * 0.97, h * 0.46);
+    path.moveTo(w * 0.02, h * 0.38);
+    path.cubicTo(w * 0.16, h * -0.02, w * 0.30, h * 0.82, w * 0.48, h * 0.30);
+    path.cubicTo(w * 0.66, h * -0.12, w * 0.80, h * 0.80, w * 0.97, h * 0.24);
     return path;
+  }
+
+  void _drawSkyline(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final baseline = h * 0.86;
+    final paint = Paint()..color = const Color(0xFF0E4038).withValues(alpha: 0.55);
+
+    void building(double xFrac, double widthFrac, double heightFrac) {
+      final bw = w * widthFrac;
+      final bh = h * heightFrac;
+      final bx = w * xFrac;
+      canvas.drawRect(Rect.fromLTWH(bx, baseline - bh, bw, bh), paint);
+    }
+
+    building(0.00, 0.028, 0.20);
+    building(0.04, 0.022, 0.28);
+    building(0.075, 0.03, 0.16);
+    building(0.12, 0.02, 0.34);
+    building(0.155, 0.026, 0.22);
+    // Torch tower — the distinctive Doha landmark on the skyline.
+    canvas.drawRect(Rect.fromLTWH(w * 0.20, baseline - h * 0.42, w * 0.014, h * 0.42), paint);
+    canvas.drawCircle(Offset(w * 0.207, baseline - h * 0.44), h * 0.032, paint);
+    building(0.235, 0.024, 0.24);
+    building(0.27, 0.018, 0.34);
+    building(0.30, 0.03, 0.18);
+    building(0.68, 0.028, 0.18);
+    building(0.72, 0.02, 0.30);
+    building(0.75, 0.032, 0.22);
+    building(0.79, 0.018, 0.36);
+    building(0.82, 0.026, 0.16);
+    building(0.86, 0.022, 0.26);
+    building(0.90, 0.03, 0.14);
+    building(0.94, 0.024, 0.24);
+
+    final waterline = Paint()
+      ..color = Colors.white.withValues(alpha: 0.14)
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(0, baseline), Offset(w, baseline), waterline);
+
+    final reflection = Paint()
+      ..color = Colors.white.withValues(alpha: 0.09)
+      ..strokeWidth = 1;
+    for (double rx = 0.03; rx < 0.95; rx += 0.17) {
+      canvas.drawLine(Offset(w * rx, baseline + h * 0.05), Offset(w * rx + w * 0.06, baseline + h * 0.05), reflection);
+    }
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    // Faint dot-grid texture.
-    final gridPaint = Paint()..color = Colors.white.withValues(alpha: 0.045);
-    const step = 24.0;
-    for (double gx = 0; gx < size.width; gx += step) {
-      for (double gy = 0; gy < size.height; gy += step) {
-        canvas.drawCircle(Offset(gx, gy), 1.0, gridPaint);
-      }
-    }
+    _drawSkyline(canvas, size);
 
     final fade = t > _celebrateEnd ? 1.0 - ((t - _celebrateEnd) / (1.0 - _celebrateEnd)) : 1.0;
     if (fade <= 0.01) return;
@@ -415,70 +505,63 @@ class _DeliveryProgressPainter extends CustomPainter {
     final total = metric.length;
     if (total <= 0) return;
 
-    // Dashed route line.
-    final dashPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.16 * fade)
-      ..strokeWidth = 1.4
+    // Thread (dashed) behind the pearls.
+    final threadPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.22 * fade)
+      ..strokeWidth = 2.4
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    const dashLen = 6.0, gapLen = 5.0;
+    const dashLen = 2.4, gapLen = 8.0;
     var d = 0.0;
     while (d < total) {
       final next = min(d + dashLen, total);
-      canvas.drawPath(metric.extractPath(d, next), dashPaint);
+      canvas.drawPath(metric.extractPath(d, next), threadPaint);
       d = next + gapLen;
     }
 
     final travelProgress = Curves.easeInOut.transform((t / _travelEnd).clamp(0.0, 1.0));
     final travelled = total * travelProgress;
 
-    // Brightened trail behind the parcel.
+    // Gold thread revealed behind the van.
     canvas.drawPath(
       metric.extractPath(0, travelled),
       Paint()
-        ..color = AppColors.purple.withValues(alpha: 0.55 * fade)
-        ..strokeWidth = 1.8
+        ..color = _Palette.gold.withValues(alpha: 0.9 * fade)
+        ..strokeWidth = 3.6
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
     );
 
-    // Checkpoints.
     for (final cp in _checkpoints) {
       final cpDist = (cp.t * total).clamp(0.0, total);
       final tangent = metric.getTangentForOffset(cpDist);
       if (tangent == null) continue;
-      _drawCheckpoint(canvas, tangent, cp.label, reached: cpDist <= travelled + 1, fade: fade);
+      _drawPearl(canvas, tangent, cp.label, reached: cpDist <= travelled + 1, fade: fade);
     }
 
     final parcelTangent = metric.getTangentForOffset(travelled.clamp(0.0, total));
     if (parcelTangent == null) return;
 
     if (t <= _travelEnd) {
-      _drawParcel(canvas, parcelTangent.position, parcelTangent.angle, fade);
+      var angle = parcelTangent.angle;
+      angle = angle.clamp(-0.25, 0.25);
+      _drawVan(canvas, parcelTangent.position, angle, fade);
     } else {
       final endTangent = metric.getTangentForOffset(total);
       final endPos = endTangent?.position ?? parcelTangent.position;
-      _drawParcel(canvas, endPos, 0, fade);
+      _drawVan(canvas, endPos, 0, fade);
       final celebrate = Curves.easeOutBack.transform(((t - _travelEnd) / (_celebrateEnd - _travelEnd)).clamp(0.0, 1.0));
-      _drawCheckBadge(canvas, endPos, celebrate, fade);
+      _drawOyster(canvas, endPos, celebrate, fade);
     }
   }
 
-  void _drawCheckpoint(Canvas canvas, ui.Tangent tangent, String label, {required bool reached, required double fade}) {
+  void _drawPearl(Canvas canvas, ui.Tangent tangent, String label, {required bool reached, required double fade}) {
     final pos = tangent.position;
-    canvas.drawCircle(
-      pos,
-      4,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.14 * fade)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-    canvas.drawCircle(pos, 2.4, Paint()..color = (reached ? AppColors.purple : Colors.white).withValues(alpha: (reached ? 0.85 : 0.18) * fade));
+    canvas.drawCircle(pos, 9, Paint()..color = Colors.white.withValues(alpha: 0.18 * fade)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+    canvas.drawCircle(pos, reached ? 6.4 : 5.6, Paint()..color = (reached ? _Palette.gold : Colors.white).withValues(alpha: (reached ? 0.95 : 0.26) * fade));
+    // Tiny highlight so the reached pearls actually read as pearls.
+    if (reached) canvas.drawCircle(pos + const Offset(-1.6, -1.6), 1.5, Paint()..color = Colors.white.withValues(alpha: 0.75 * fade));
 
-    // Anchor the label to the outward (upward-biased) side of the curve
-    // so it never sits on top of the route line regardless of the local
-    // tangent direction.
     var normal = Offset(-tangent.vector.dy, tangent.vector.dx);
     if (normal.dy > 0) normal = -normal;
     final normLen = normal.distance == 0 ? 1 : normal.distance;
@@ -489,70 +572,89 @@ class _DeliveryProgressPainter extends CustomPainter {
         text: label,
         style: TextStyle(
           fontFamily: 'JetBrainsMono',
-          fontSize: 9.5,
-          letterSpacing: 0.5,
-          fontWeight: reached ? FontWeight.w600 : FontWeight.w400,
-          color: Colors.white.withValues(alpha: (reached ? 0.9 : 0.4) * fade),
+          fontSize: 14,
+          letterSpacing: 0.6,
+          fontWeight: FontWeight.w700,
+          color: reached ? Colors.white.withValues(alpha: fade) : Colors.white.withValues(alpha: 0.5 * fade),
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    final labelCenter = pos + normal * 14;
+    final labelCenter = pos + normal * 24;
     tp.paint(canvas, Offset(labelCenter.dx - tp.width / 2, labelCenter.dy - tp.height / 2));
   }
 
-  void _drawParcel(Canvas canvas, Offset pos, double angle, double fade) {
+  void _drawVan(Canvas canvas, Offset pos, double angle, double fade) {
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
     canvas.rotate(angle);
 
-    // Soft glow.
-    canvas.drawCircle(
-      Offset.zero,
-      9,
-      Paint()
-        ..color = AppColors.purple.withValues(alpha: 0.28 * fade)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
+    canvas.drawCircle(Offset.zero, 20, Paint()..color = _Palette.gold.withValues(alpha: 0.22 * fade)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
 
-    // Box body — a cross-taped parcel is symmetric, so it reads correctly
-    // at any rotation angle (unlike an asymmetric side-view icon).
-    final boxRect = RRect.fromRectAndRadius(const Rect.fromLTWH(-5.5, -5.5, 11, 11), const Radius.circular(2));
-    canvas.drawRRect(boxRect, Paint()..color = Colors.white.withValues(alpha: 0.95 * fade));
-
-    final tapePaint = Paint()
-      ..color = AppColors.navy.withValues(alpha: 0.75 * fade)
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(0, -5.5), const Offset(0, 5.5), tapePaint);
-    canvas.drawLine(const Offset(-5.5, 0), const Offset(5.5, 0), tapePaint);
+    // Body.
+    final body = RRect.fromRectAndRadius(const Rect.fromLTWH(-22, -10, 44, 20), const Radius.circular(5));
+    canvas.drawRRect(body, Paint()..color = _Palette.pearl.withValues(alpha: 0.96 * fade));
+    // Cab.
+    final cab = RRect.fromRectAndRadius(const Rect.fromLTWH(7, -16, 13, 13), const Radius.circular(3));
+    canvas.drawRRect(cab, Paint()..color = _Palette.pearl.withValues(alpha: 0.96 * fade));
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(10, -13.5, 7, 7.5), const Radius.circular(1.4)), Paint()..color = _Palette.ink.withValues(alpha: 0.7 * fade));
+    // Gold livery stripe with the EE monogram — Essence Express branding.
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-17, -4.5, 15, 9), const Radius.circular(2)), Paint()..color = _Palette.gold.withValues(alpha: 0.95 * fade));
+    final tp = TextPainter(
+      text: TextSpan(text: 'EE', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 7, fontWeight: FontWeight.w700, color: _Palette.ink.withValues(alpha: fade))),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(-17 + (15 - tp.width) / 2, -4.5 + (9 - tp.height) / 2));
+    // Wheels.
+    final wheel = Paint()..color = const Color(0xFF0B1F1B).withValues(alpha: fade);
+    canvas.drawCircle(const Offset(-12, 12.5), 5, wheel);
+    canvas.drawCircle(const Offset(12, 12.5), 5, wheel);
 
     canvas.restore();
   }
 
-  void _drawCheckBadge(Canvas canvas, Offset pos, double scale, double fade) {
+  void _drawOyster(Canvas canvas, Offset pos, double scale, double fade) {
     if (scale <= 0.01) return;
     canvas.save();
-    canvas.translate(pos.dx, pos.dy - 16);
-    canvas.scale(scale);
+    canvas.translate(pos.dx, pos.dy - 28);
 
-    canvas.drawCircle(Offset.zero, 8, Paint()..color = AppColors.purple.withValues(alpha: fade));
-    final checkPath = Path()
-      ..moveTo(-3.6, 0)
-      ..lineTo(-1, 3)
-      ..lineTo(4, -3.5);
-    canvas.drawPath(
-      checkPath,
-      Paint()
-        ..color = AppColors.navy.withValues(alpha: fade)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
+    final shellPaint = Paint()
+      ..color = const Color(0xFF0E4038).withValues(alpha: fade)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    canvas.save();
+    canvas.rotate(-0.32 * scale);
+    canvas.drawArc(const Rect.fromLTWH(-26, -6, 26, 19), pi * 0.5, pi, false, shellPaint);
+    canvas.restore();
+
+    canvas.save();
+    canvas.rotate(0.32 * scale);
+    canvas.drawArc(const Rect.fromLTWH(0, -6, 26, 19), -pi * 0.5, pi, false, shellPaint);
+    canvas.restore();
+
+    canvas.drawCircle(Offset.zero, 8 * scale, Paint()..color = _Palette.pearl.withValues(alpha: fade));
+    canvas.drawCircle(Offset(-2.2 * scale, -2.2 * scale), 2.2 * scale, Paint()..color = Colors.white.withValues(alpha: 0.8 * fade));
+
+    if (scale > 0.6) {
+      final checkPath = Path()
+        ..moveTo(-4.2, 0)
+        ..lineTo(-1, 3.2)
+        ..lineTo(4.8, -4);
+      canvas.drawPath(
+        checkPath,
+        Paint()
+          ..color = _Palette.ink.withValues(alpha: fade)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _DeliveryProgressPainter oldDelegate) => oldDelegate.t != t;
+  bool shouldRepaint(covariant _SkylineRoutePainter oldDelegate) => oldDelegate.t != t;
 }
