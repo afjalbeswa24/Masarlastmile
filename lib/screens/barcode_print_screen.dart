@@ -56,8 +56,12 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
 
   double get _pageWidth => _activePreset.pageWidthMm * _mmToPt;
   double get _pageHeight => _activePreset.pageHeightMm * _mmToPt;
-  double get _pageMargin => _activePreset.perPage == 1 ? 6 : 16;
-  double get _labelSpacing => 4;
+  // Trimmed from 16pt down to 10pt for multi-label pages — most printers
+  // still handle a ~3.5mm margin fine, and the space it frees up goes
+  // straight into _labelSpacing below rather than into the labels
+  // themselves, so there's a clearer visible gap between columns.
+  double get _pageMargin => _activePreset.perPage == 1 ? 6 : 10;
+  double get _labelSpacing => 10;
   double get _labelWidth => (_pageWidth - (_pageMargin * 2) - (_labelSpacing * (_activePreset.columns - 1))) / _activePreset.columns;
   double get _labelHeight => (_pageHeight - (_pageMargin * 2) - (_labelSpacing * (_activePreset.rows - 1))) / _activePreset.rows;
 
@@ -125,13 +129,16 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   String _fmtDateTime(Map<String, dynamic> label) {
     final date = label['delivery_date'] as String?;
     final before = label['delivery_window_end'] as String?;
-    final datePart = date ?? '—';
-    final timePart = before != null && before.length >= 5 ? before.substring(0, 5) : '—';
+    // '--' rather than an em dash: the default PDF core font ('pdf'
+    // package's base Helvetica) doesn't include the em dash glyph, so it
+    // rendered as an unreadable tofu box whenever delivery_date or
+    // delivery_window_end was null.
+    final datePart = date ?? '--';
+    final timePart = before != null && before.length >= 5 ? before.substring(0, 5) : '--';
     return '$datePart - $timePart';
   }
 
   pw.Widget _buildCompactLabelPdf(Map<String, dynamic> label) {
-    final s = _scaleFactor;
     final companyName = label['company']?['name'] ?? '';
     final merchantName = label['merchant']?['full_name'] ?? '';
     final consigneeName = label['consignee_name'] ?? '';
@@ -139,6 +146,98 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final boxCode = label['box_code'] ?? '';
     final boxNumber = label['box_number'] ?? 1;
     final boxTotal = label['box_total'] ?? 1;
+    final codAmount = label['cod_amount'] ?? 0;
+    final hasCod = codAmount is num && codAmount > 0;
+
+    // Presets like 16-per-page produce short, wide cells rather than the
+    // tall cells the stacked layout below was designed for — no amount of
+    // shrinking makes a portrait layout fit a landscape cell well, so this
+    // uses a left-QR / right-info layout instead, sized directly off the
+    // real available space rather than one blanket scale factor.
+    if (_labelWidth > _labelHeight) {
+      final qrSize = (_labelHeight - 16).clamp(24.0, 100.0);
+      return pw.Padding(
+        padding: const pw.EdgeInsets.all(3),
+        child: pw.Container(
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Container(
+                width: qrSize + 10,
+                padding: const pw.EdgeInsets.all(4),
+                decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 0.5))),
+                child: pw.Column(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.BarcodeWidget(barcode: bc.Barcode.qrCode(), data: boxCode, width: qrSize, height: qrSize, drawText: false),
+                    pw.SizedBox(height: 2),
+                    pw.Text(boxCode, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 6.5), textAlign: pw.TextAlign.center),
+                  ],
+                ),
+              ),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                        children: [
+                          pw.Text(companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5), maxLines: 1, overflow: pw.TextOverflow.clip),
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (hasCod)
+                                pw.Container(
+                                  padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                                  decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.4)),
+                                  child: pw.Text('COD $codAmount', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 6)),
+                                )
+                              else
+                                pw.SizedBox(),
+                              pw.Text(_fmtDateTime(label), style: const pw.TextStyle(fontSize: 6.5)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    pw.Divider(height: 0.5, thickness: 0.5),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: pw.Text('FROM: $merchantName', style: const pw.TextStyle(fontSize: 6.5), maxLines: 1, overflow: pw.TextOverflow.clip),
+                    ),
+                    pw.Expanded(
+                      child: pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 6),
+                        child: pw.Align(
+                          alignment: pw.Alignment.centerLeft,
+                          child: pw.Text(consigneeName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5), maxLines: 1, overflow: pw.TextOverflow.clip),
+                        ),
+                      ),
+                    ),
+                    pw.Divider(height: 0.5, thickness: 0.5),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Box $boxNumber/$boxTotal', style: const pw.TextStyle(fontSize: 6.5)),
+                          pw.Text(city, style: const pw.TextStyle(fontSize: 6.5)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final s = _scaleFactor;
     final qrSize = (78.0 * s).clamp(32.0, 78.0); // never let the QR get unscannably small
 
     return pw.Padding(
@@ -150,11 +249,24 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
         children: [
           pw.Container(
             padding: pw.EdgeInsets.symmetric(horizontal: 6 * s, vertical: 5 * s),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                pw.Text(companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11 * s)),
-                pw.Text(_fmtDateTime(label), style: pw.TextStyle(fontSize: 8 * s)),
+                pw.Text(companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11 * s), maxLines: 1, overflow: pw.TextOverflow.clip),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (hasCod)
+                      pw.Container(
+                        padding: pw.EdgeInsets.symmetric(horizontal: 4 * s, vertical: 1 * s),
+                        decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
+                        child: pw.Text('COD $codAmount', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: (7 * s).clamp(5.0, 7.0))),
+                      )
+                    else
+                      pw.SizedBox(),
+                    pw.Text(_fmtDateTime(label), style: pw.TextStyle(fontSize: 8 * s)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -202,7 +314,6 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   }
 
   pw.Widget _buildDetailedLabelPdf(Map<String, dynamic> label) {
-    final s = _scaleFactor;
     final companyName = label['company']?['name'] ?? '';
     final merchantName = label['merchant']?['full_name'] ?? '';
     final merchantAddress = label['merchant_address'] ?? '';
@@ -214,6 +325,115 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final deliveryType = (label['delivery_type'] ?? 'standard').toString();
     final codAmount = (label['cod_amount'] ?? 0);
     final hasCod = codAmount is num && codAmount > 0;
+
+    // Short, wide cells (e.g. 2x8 / 16-per-page) have height as the scarce
+    // dimension, not width — the old header+QR-row+footer stack wasted a
+    // lot of that height on two separate chrome rows and left the QR
+    // capped well under what the cell could actually fit. This layout puts
+    // everything in a single row so the QR can use almost the full label
+    // height, and folds company/date/COD/delivery/box info around the
+    // FROM/TO block instead of in their own rows, freeing enough space to
+    // show the address lines too.
+    if (_labelWidth > _labelHeight) {
+      final qrSize = (_labelHeight - 20).clamp(30.0, 110.0);
+      return pw.Padding(
+        padding: const pw.EdgeInsets.all(3),
+        child: pw.Container(
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Container(
+                width: qrSize + 12,
+                padding: const pw.EdgeInsets.all(4),
+                decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 0.5))),
+                child: pw.Column(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.BarcodeWidget(barcode: bc.Barcode.qrCode(), data: boxCode, width: qrSize, height: qrSize, drawText: false),
+                    pw.SizedBox(height: 2),
+                    pw.Text(boxCode, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 6.5), textAlign: pw.TextAlign.center),
+                  ],
+                ),
+              ),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                        children: [
+                          pw.Text(companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5), maxLines: 1, overflow: pw.TextOverflow.clip),
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (hasCod)
+                                pw.Container(
+                                  padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                                  decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.4)),
+                                  child: pw.Text('COD $codAmount', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 6)),
+                                )
+                              else
+                                pw.SizedBox(),
+                              pw.Text(_fmtDateTime(label), style: const pw.TextStyle(fontSize: 6.5)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    pw.Divider(height: 0.5, thickness: 0.5),
+                    pw.Expanded(
+                      child: pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          mainAxisAlignment: pw.MainAxisAlignment.center,
+                          children: [
+                            pw.Text('FROM: $merchantName', style: const pw.TextStyle(fontSize: 6.5), maxLines: 1, overflow: pw.TextOverflow.clip),
+                            if (merchantAddress.isNotEmpty)
+                              pw.Text(merchantAddress, style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey700), maxLines: 1, overflow: pw.TextOverflow.clip),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.Divider(height: 0.5, thickness: 0.5),
+                    pw.Expanded(
+                      child: pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          mainAxisAlignment: pw.MainAxisAlignment.center,
+                          children: [
+                            pw.Text('TO: $consigneeName', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8), maxLines: 1, overflow: pw.TextOverflow.clip),
+                            if (consigneeAddress.isNotEmpty)
+                              pw.Text(consigneeAddress, style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey700), maxLines: 1, overflow: pw.TextOverflow.clip),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.Divider(height: 0.5, thickness: 0.5),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(deliveryType[0].toUpperCase() + deliveryType.substring(1), style: const pw.TextStyle(fontSize: 6)),
+                          pw.Text('Box $boxNumber/$boxTotal', style: const pw.TextStyle(fontSize: 6)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final s = _scaleFactor;
     final qrSize = (52.0 * s).clamp(28.0, 52.0); // never let the QR get unscannably small
     final showAddress = s > 0.7; // only tall enough presets can afford the extra address lines
 
@@ -229,7 +449,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text(companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10 * s)),
+                  pw.Expanded(child: pw.Text(companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10 * s), maxLines: 1, overflow: pw.TextOverflow.clip)),
                   if (hasCod)
                     pw.Container(
                       padding: pw.EdgeInsets.symmetric(horizontal: 4 * s, vertical: 1 * s),
@@ -338,10 +558,30 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               // stickers) — no grid needed, just the one label filling the page.
               return buildLabel(pageLabels.first);
             }
+            // Two separate safeguards on this grid:
+            // 1. pw.GridView sizes each row by dividing the page's available
+            //    height across however many rows are actually present in its
+            //    children — not by the preset's fixed row count. So a partial
+            //    last page (e.g. 12 labels left on a 16-per-page/2x8 preset)
+            //    would get taller rows, enlarging every label on that page.
+            //    Padding to a full `perPage` set of cells with invisible
+            //    placeholders keeps row count — and label size — identical
+            //    on every page, including the last.
+            // 2. pw.Container doesn't clip its own children by default, so
+            //    content still too wide for its cell (a long merchant name,
+            //    an unusually long COD amount) paints straight through the
+            //    cell border into the neighboring column instead of
+            //    disappearing — this caused header text to visibly bleed
+            //    into the next label. ClipRect makes overflow invisible
+            //    instead, as a backstop on top of the header layout fix.
+            final cells = List<pw.Widget>.generate(
+              perPage,
+              (idx) => idx < pageLabels.length ? pw.ClipRect(child: buildLabel(pageLabels[idx])) : pw.SizedBox(),
+            );
             return pw.GridView(
               crossAxisCount: preset.columns,
               childAspectRatio: _labelWidth / _labelHeight,
-              children: pageLabels.map(buildLabel).toList(),
+              children: cells,
             );
           },
         ),
@@ -359,6 +599,8 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final boxCode = label['box_code'] ?? '';
     final boxNumber = label['box_number'] ?? 1;
     final boxTotal = label['box_total'] ?? 1;
+    final codAmount = label['cod_amount'] ?? 0;
+    final hasCod = codAmount is num && codAmount > 0;
 
     return Container(
       width: 190,
@@ -372,7 +614,20 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(child: Text(companyName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis)),
-                Text(_fmtDateTime(label), style: const TextStyle(fontSize: 10)),
+                Row(
+                  children: [
+                    if (hasCod)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(border: Border.all(color: Colors.black45), borderRadius: BorderRadius.circular(4)),
+                          child: Text('COD $codAmount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                        ),
+                      ),
+                    Text(_fmtDateTime(label), style: const TextStyle(fontSize: 10)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -521,60 +776,64 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               title: const Text('Paper & Label Size'),
               content: SizedBox(
                 width: 340,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ..._presets.asMap().entries.map((entry) {
-                      return RadioListTile<int>(
+                child: RadioGroup<int>(
+                  groupValue: tempCustom ? -1 : tempPreset,
+                  onChanged: (v) => setDialogState(() {
+                    if (v == -1) {
+                      tempCustom = true;
+                    } else {
+                      tempPreset = v!;
+                      tempCustom = false;
+                    }
+                  }),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ..._presets.asMap().entries.map((entry) {
+                        return RadioListTile<int>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(entry.value.name, style: const TextStyle(fontSize: 14)),
+                          value: entry.key,
+                        );
+                      }),
+                      const RadioListTile<int>(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: Text(entry.value.name, style: const TextStyle(fontSize: 14)),
-                        value: entry.key,
-                        groupValue: tempCustom ? -1 : tempPreset,
-                        onChanged: (v) => setDialogState(() {
-                          tempPreset = v!;
-                          tempCustom = false;
-                        }),
-                      );
-                    }),
-                    RadioListTile<int>(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Custom size (mm)', style: TextStyle(fontSize: 14)),
-                      value: -1,
-                      groupValue: tempCustom ? -1 : tempPreset,
-                      onChanged: (v) => setDialogState(() => tempCustom = true),
-                    ),
-                    if (tempCustom)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: widthController,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(labelText: 'Width (mm)', isDense: true),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: heightController,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(labelText: 'Height (mm)', isDense: true),
-                              ),
-                            ),
-                          ],
-                        ),
+                        title: Text('Custom size (mm)', style: TextStyle(fontSize: 14)),
+                        value: -1,
                       ),
+                      if (tempCustom)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: widthController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(labelText: 'Width (mm)', isDense: true),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: heightController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(labelText: 'Height (mm)', isDense: true),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     if (tempCustom)
                       const Padding(
                         padding: EdgeInsets.only(left: 32, top: 4),
                         child: Text('One label per page — for pre-cut stickers fed individually.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                       ),
                   ],
+                ),
                 ),
               ),
               actions: [
