@@ -31,6 +31,7 @@ const _presets = [
   _LabelPreset('A4 sheet · 2×8 (16 per page)', 210, 297, 2, 8),
   _LabelPreset('A4 sheet · 2×4 (8 per page)', 210, 297, 2, 4),
   _LabelPreset('A4 sheet · 2×2 (4 per page)', 210, 297, 2, 2),
+  _LabelPreset('A4 sheet · 2×7 (14 per page)', 210, 297, 2, 7),
   _LabelPreset('Shipping label 4×6 in (1 per page)', 101.6, 152.4, 1, 1),
   _LabelPreset('Sticker 3×2 in (1 per page)', 76.2, 50.8, 1, 1),
 ];
