@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const navy = Color(0xFF0B2B2B);
-  static const purple = Color(0xFF0D9488);
-  static const purpleLight = Color(0xFFE3F5F1);
+  static const navy = Color(0xFF1C4373);
+  static const purple = Color(0xFF2B7FC4);
+  static const purpleLight = Color(0xFFE3EEF9);
   static const background = Color(0xFFF7F8FA);
   static const border = Color(0xFFE3E6EA);
   static const rowDivider = Color(0xFFCDD3DA);

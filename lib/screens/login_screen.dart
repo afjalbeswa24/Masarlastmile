@@ -13,13 +13,17 @@ import '../main.dart';
 // not a generic dotted line).
 // ---------------------------------------------------------------------------
 class _Palette {
-  static const nightTeal = Color(0xFF071E1B);
-  static const deepTeal = Color(0xFF0B322C);
-  static const brandTeal = Color(0xFF12A187);
-  static const brandTealLight = Color(0xFF3FD9B4);
+  static const nightTeal = Color(0xFF0A1E33);
+  static const brandTeal = Color(0xFF2B7FC4);
+  static const brandTealLight = Color(0xFF6BB6E8);
+  // Sky-blue background tones — lighter/more vivid than nightTeal/deepTeal,
+  // used for the brand panel gradient so it reads as sky blue rather than
+  // near-black navy, while still darkening at the edges for text contrast.
+  static const skyBlue = Color(0xFF3E8FD6);
+  static const skyBlueDeep = Color(0xFF1E5C93);
   static const gold = Color(0xFFD9AF61);
   static const pearl = Color(0xFFF3ECDD);
-  static const ink = Color(0xFF0B322C);
+  static const ink = Color(0xFF0B1F33);
   static const textSecondary = Color(0xFF6B7A76);
   static const border = Color(0xFFDFE3E0);
   static const fieldBg = Color(0xFFFBFCFB);
@@ -102,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         gradient: RadialGradient(
           center: Alignment(-0.7, -1),
           radius: 1.6,
-          colors: [_Palette.deepTeal, _Palette.nightTeal, Color(0xFF04120F)],
+          colors: [_Palette.skyBlue, _Palette.skyBlueDeep, _Palette.nightTeal],
           stops: [0, 0.55, 1],
         ),
       ),
@@ -198,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       'assets/images/logo.png',
       width: 20,
       height: 20,
-      color: Colors.white.withValues(alpha: 0.85),
+      color: _Palette.brandTealLight, // matches the sign-in button's blue, lighter tint so it reads clearly against the dark panel
       colorBlendMode: BlendMode.srcIn,
     );
   }
@@ -374,7 +378,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 children: [
                   _masarLogo(size: 52),
                   const SizedBox(height: 16),
-                  const Text('ESSENCE EXPRESS', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2, color: _Palette.ink)),
+                                    Text.rich(
+                    TextSpan(
+                      style: const TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2),
+                      children: [
+                        TextSpan(text: 'ESSENCE ', style: TextStyle(color: const Color(0xFF1C4680))),
+                        TextSpan(text: 'EXPRESS', style: TextStyle(color: const Color(0xFF4E9EB8), fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   const Text('ESSENCE · LAST-MILE LOGISTICS · DOHA', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 10, letterSpacing: 1.2, color: _Palette.textSecondary)),
                   const SizedBox(height: 30),
@@ -448,7 +460,13 @@ class _SkylineRoutePainter extends CustomPainter {
   void _drawSkyline(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final baseline = h * 0.86;
-    final paint = Paint()..color = const Color(0xFF0E4038).withValues(alpha: 0.55);
+    // Building bars are dark silhouettes against the lighter sky-blue
+    // background — the opposite of the background, so they read clearly
+    // as a skyline rather than blending in.
+    final paint = Paint()..color = _Palette.ink.withValues(alpha: 0.75);
+    // Torch tower stays a touch darker still, so the one landmark shape
+    // stands out from the plain bars around it.
+    final towerPaint = Paint()..color = _Palette.ink.withValues(alpha: 0.92);
 
     void building(double xFrac, double widthFrac, double heightFrac) {
       final bw = w * widthFrac;
@@ -463,8 +481,8 @@ class _SkylineRoutePainter extends CustomPainter {
     building(0.12, 0.02, 0.34);
     building(0.155, 0.026, 0.22);
     // Torch tower — the distinctive Doha landmark on the skyline.
-    canvas.drawRect(Rect.fromLTWH(w * 0.20, baseline - h * 0.42, w * 0.014, h * 0.42), paint);
-    canvas.drawCircle(Offset(w * 0.207, baseline - h * 0.44), h * 0.032, paint);
+    canvas.drawRect(Rect.fromLTWH(w * 0.20, baseline - h * 0.42, w * 0.014, h * 0.42), towerPaint);
+    canvas.drawCircle(Offset(w * 0.207, baseline - h * 0.44), h * 0.032, towerPaint);
     building(0.235, 0.024, 0.24);
     building(0.27, 0.018, 0.34);
     building(0.30, 0.03, 0.18);
@@ -655,7 +673,7 @@ class _SkylineRoutePainter extends CustomPainter {
     canvas.translate(pos.dx, pos.dy - 28);
 
     final shellPaint = Paint()
-      ..color = const Color(0xFF0E4038).withValues(alpha: fade)
+      ..color = const Color(0xFF163A5C).withValues(alpha: fade)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
