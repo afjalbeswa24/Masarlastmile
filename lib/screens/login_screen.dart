@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   children: [
                     _masarBadge(),
                     const SizedBox(width: 8),
-                    const Text('MASAR', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white)),
+                    const Text('ESE Last Mile', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white)),
                     Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 12, color: Colors.white.withValues(alpha: 0.2)),
                     Text('Control tower for last-mile delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Colors.white.withValues(alpha: 0.5))),
                     const Spacer(),
@@ -332,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             children: [
               Center(child: _masarLogo()),
               const SizedBox(height: 14),
-              const Text('MASAR', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2, color: _Palette.ink)),
+              const Text('ESE', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2, color: _Palette.ink)),
               const SizedBox(height: 4),
               const Text('LAST-MILE DELIVERY SYSTEM', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 9.5, letterSpacing: 1.5, color: _Palette.textSecondary)),
               const SizedBox(height: 26),
@@ -376,7 +376,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   const SizedBox(height: 16),
                   const Text('ESSENCE EXPRESS', style: TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 2, color: _Palette.ink)),
                   const SizedBox(height: 6),
-                  const Text('MASAR · LAST-MILE LOGISTICS · DOHA', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 10, letterSpacing: 1.2, color: _Palette.textSecondary)),
+                  const Text('ESSENCE · LAST-MILE LOGISTICS · DOHA', style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 10, letterSpacing: 1.2, color: _Palette.textSecondary)),
                   const SizedBox(height: 30),
                   _formFields(),
                 ],

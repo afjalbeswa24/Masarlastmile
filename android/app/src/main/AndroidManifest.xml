@@ -6,7 +6,7 @@
 
 
     <application
-        android:label="MASAR"
+        android:label="ESE Last Mile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
