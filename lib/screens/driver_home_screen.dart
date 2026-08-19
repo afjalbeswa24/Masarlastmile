@@ -110,8 +110,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with WidgetsBinding
               const SizedBox(height: 10),
               Text(
                 needsService
-                    ? 'MASAR needs your phone\'s GPS turned on so dispatch can track deliveries. Please enable Location in your phone settings, then come back and tap Retry.'
-                    : 'MASAR needs location permission to track deliveries. Please allow it, then tap Retry.',
+                    ? 'Essence Express needs your phone\'s GPS turned on so dispatch can track deliveries. Please enable Location in your phone settings, then come back and tap Retry.'
+                    : 'Essence Express needs location permission to track deliveries. Please allow it, then tap Retry.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.textSecondary),
               ),

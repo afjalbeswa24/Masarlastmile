@@ -28,7 +28,7 @@ class _MerchantHomeScreenState extends State<MerchantHomeScreen> {
         .maybeSingle();
 
     setState(() {
-      _companyName = profile?['company']?['name'] ?? 'MASAR';
+      _companyName = profile?['company']?['name'] ?? 'Essence Express';
     });
   }
 

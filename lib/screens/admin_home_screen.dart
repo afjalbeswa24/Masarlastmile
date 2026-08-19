@@ -139,7 +139,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MASAR — Admin'),
+        title: const Text('Essence Express — Admin'),
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         actions: [

@@ -3,9 +3,9 @@
     "short_name": "ESE Last Mile",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0B2B2B",
-    "theme_color": "#0B2B2B",
-    "description": "A new Flutter project.",
+    "background_color": "#1C4373",
+    "theme_color": "#1C4373",
+    "description": "Essence Express last-mile delivery platform.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
