@@ -195,7 +195,13 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     );
   }
 
-  pw.Widget _buildCompactLabelPdf(Map<String, dynamic> label) {
+  pw.Widget _buildCompactLabelPdf(
+    Map<String, dynamic> label, {
+    double leftPad = 9,
+    double rightPad = 9,
+    double topExtra = 0,
+    double bottomExtra = 0,
+  }) {
     final companyName = label['company']?['name'] ?? '';
     final merchantName = label['merchant']?['full_name'] ?? '';
     final consigneeName = label['consignee_name'] ?? '';
@@ -212,13 +218,19 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     // uses a left-QR / right-info layout instead, sized directly off the
     // real available space rather than one blanket scale factor.
     if (_labelWidth > _labelHeight) {
-      final qrSize = (_labelHeight - 24).clamp(20.0, 85.0);
-      // Padding widened further (5pt -> 9pt horizontal, plus a little top
-      // padding) so content sits well clear of the actual cut line even
-      // if there's some drift from the printer's own margin handling —
-      // "shrink more" per your last message.
+      // Subtracting topExtra + bottomExtra here too: those insets (added
+      // for the first/last row on the zero-gap preset) eat into the same
+      // vertical space the QR sizes itself against. Without this, row 1's
+      // QR needed more room than was actually left after its extra top
+      // inset, and pdf's layout silently dropped the QR rather than
+      // erroring — this shrinks the QR by exactly the inset instead.
+      final qrSize = (_labelHeight - 24 - topExtra - bottomExtra).clamp(20.0, 85.0);
+      // leftPad/rightPad let the caller give less padding at the seam
+      // between two columns and more at the true outer page edge —
+      // topExtra/bottomExtra do the same for the top/bottom-most rows,
+      // which sit right at the printer's hardware-unprintable zone.
       final content = pw.Padding(
-        padding: const pw.EdgeInsets.fromLTRB(9, 3, 9, 5),
+        padding: pw.EdgeInsets.fromLTRB(leftPad, 3 + topExtra, rightPad, 5 + bottomExtra),
         child: pw.Container(
           decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
           child: pw.Row(
@@ -378,7 +390,13 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     );
   }
 
-  pw.Widget _buildDetailedLabelPdf(Map<String, dynamic> label) {
+  pw.Widget _buildDetailedLabelPdf(
+    Map<String, dynamic> label, {
+    double leftPad = 9,
+    double rightPad = 9,
+    double topExtra = 0,
+    double bottomExtra = 0,
+  }) {
     final companyName = label['company']?['name'] ?? '';
     final merchantName = label['merchant']?['full_name'] ?? '';
     final merchantAddress = label['merchant_address'] ?? '';
@@ -400,11 +418,14 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     // FROM/TO block instead of in their own rows, freeing enough space to
     // show the address lines too.
     if (_labelWidth > _labelHeight) {
-      final qrSize = (_labelHeight - 28).clamp(26.0, 95.0);
-      // Padding widened further (5pt -> 9pt horizontal, plus a little top
-      // padding), same reasoning as the compact template.
+      // Same reasoning as the compact template — account for
+      // topExtra/bottomExtra so the QR shrinks instead of risking the
+      // same silent-drop overflow on an edge row.
+      final qrSize = (_labelHeight - 28 - topExtra - bottomExtra).clamp(26.0, 95.0);
+      // Same leftPad/rightPad/topExtra/bottomExtra reasoning as the
+      // compact template.
       final content = pw.Padding(
-        padding: const pw.EdgeInsets.fromLTRB(9, 3, 9, 5),
+        padding: pw.EdgeInsets.fromLTRB(leftPad, 3 + topExtra, rightPad, 5 + bottomExtra),
         child: pw.Container(
           decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
           child: pw.Row(
@@ -626,7 +647,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               // stickers) — no grid needed, just the one label filling the page.
               return buildLabel(pageLabels.first);
             }
-            // Two separate safeguards on this grid:
+            // Three separate safeguards on this grid:
             // 1. pw.GridView sizes each row by dividing the page's available
             //    height across however many rows are actually present in its
             //    children — not by the preset's fixed row count. So a partial
@@ -642,9 +663,34 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
             //    disappearing — this caused header text to visibly bleed
             //    into the next label. ClipRect makes overflow invisible
             //    instead, as a backstop on top of the header layout fix.
+            // 3. On the zero-gap sticker preset, only cells touching a true
+            //    page edge need extra inset — the center seam between the
+            //    two columns had more padding than it needed, and only the
+            //    first/last row sits in the printer's hardware-unprintable
+            //    zone. This rebalances padding per cell instead of adding
+            //    a blanket margin that would very slightly shrink every
+            //    row and risk misaligning the rows that already print fine.
             final cells = List<pw.Widget>.generate(
               perPage,
-              (idx) => idx < pageLabels.length ? pw.ClipRect(child: buildLabel(pageLabels[idx])) : pw.SizedBox(),
+              (idx) {
+                if (idx >= pageLabels.length) return pw.SizedBox();
+                final rowIndex = idx ~/ preset.columns;
+                final colIndex = idx % preset.columns;
+                final isFirstRow = rowIndex == 0;
+                final isLastRow = rowIndex == preset.rows - 1;
+                final isLeftmostCol = colIndex == 0;
+                final isRightmostCol = colIndex == preset.columns - 1;
+
+                final leftPad = preset.zeroGap ? (isLeftmostCol ? 12.0 : 4.0) : 9.0;
+                final rightPad = preset.zeroGap ? (isRightmostCol ? 12.0 : 4.0) : 9.0;
+                final topExtra = preset.zeroGap && isFirstRow ? 11.0 : 0.0;
+                final bottomExtra = preset.zeroGap && isLastRow ? 11.0 : 0.0;
+
+                final widget = _style == 'detailed'
+                    ? _buildDetailedLabelPdf(pageLabels[idx], leftPad: leftPad, rightPad: rightPad, topExtra: topExtra, bottomExtra: bottomExtra)
+                    : _buildCompactLabelPdf(pageLabels[idx], leftPad: leftPad, rightPad: rightPad, topExtra: topExtra, bottomExtra: bottomExtra);
+                return pw.ClipRect(child: widget);
+              },
             );
             return pw.GridView(
               crossAxisCount: preset.columns,
