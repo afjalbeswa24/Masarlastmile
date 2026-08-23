@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:barcode_widget/barcode_widget.dart' as fw;
 import 'package:barcode/barcode.dart' as bc;
@@ -21,7 +23,13 @@ class _LabelPreset {
   final double pageHeightMm;
   final int columns;
   final int rows;
-  const _LabelPreset(this.name, this.pageWidthMm, this.pageHeightMm, this.columns, this.rows);
+  // True for pre-cut sticker sheets where the die-cuts butt right up
+  // against each other and against the page edge — printing with any page
+  // margin or inter-label spacing drifts the grid off the real cut lines
+  // as it goes down the page, which is what caused content to overlap
+  // onto the next physical sticker.
+  final bool zeroGap;
+  const _LabelPreset(this.name, this.pageWidthMm, this.pageHeightMm, this.columns, this.rows, {this.zeroGap = false});
 
   int get perPage => columns * rows;
 }
@@ -32,6 +40,11 @@ const _presets = [
   _LabelPreset('A4 sheet · 2×4 (8 per page)', 210, 297, 2, 4),
   _LabelPreset('A4 sheet · 2×2 (4 per page)', 210, 297, 2, 2),
   _LabelPreset('A4 sheet · 2×7 (14 per page)', 210, 297, 2, 7),
+  // Matches a die-cut sheet of 37×105mm stickers, 2 columns x 8 rows,
+  // 0 gap: 2x105=210mm fills the A4 width exactly, 8x37=296mm ≈ the
+  // 297mm A4 height (within a fraction of a mm), so with zero margin and
+  // zero spacing each printed cell lands exactly on its physical sticker.
+  _LabelPreset('Pre-cut sticker sheet · 37×105mm, 2×8 (0 margin)', 210, 297, 2, 8, zeroGap: true),
   _LabelPreset('Shipping label 4×6 in (1 per page)', 101.6, 152.4, 1, 1),
   _LabelPreset('Sticker 3×2 in (1 per page)', 76.2, 50.8, 1, 1),
 ];
@@ -61,8 +74,12 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   // still handle a ~3.5mm margin fine, and the space it frees up goes
   // straight into _labelSpacing below rather than into the labels
   // themselves, so there's a clearer visible gap between columns.
-  double get _pageMargin => _activePreset.perPage == 1 ? 6 : 10;
-  double get _labelSpacing => 10;
+  double get _pageMargin {
+    if (_activePreset.zeroGap) return 0;
+    return _activePreset.perPage == 1 ? 6 : 10;
+  }
+
+  double get _labelSpacing => _activePreset.zeroGap ? 0 : 10;
   double get _labelWidth => (_pageWidth - (_pageMargin * 2) - (_labelSpacing * (_activePreset.columns - 1))) / _activePreset.columns;
   double get _labelHeight => (_pageHeight - (_pageMargin * 2) - (_labelSpacing * (_activePreset.rows - 1))) / _activePreset.rows;
 
@@ -139,6 +156,45 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     return '$datePart - $timePart';
   }
 
+  // Draws a dashed rectangle the exact size of one physical die-cut cell
+  // (_labelWidth x _labelHeight) — a visible cutting/alignment guide,
+  // independent of whatever padding shrinks the printed content inside
+  // it. Print a test sheet on plain paper and hold it against the real
+  // sticker sheet: if the dashed lines land on the actual cut lines, the
+  // math is right and any remaining drift is coming from the printer/
+  // print-dialog scaling rather than this file.
+  pw.Widget _cutGuide(double width, double height) {
+    return pw.CustomPaint(
+      size: PdfPoint(width, height),
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        canvas
+          ..setColor(PdfColors.grey500)
+          ..setLineWidth(0.5);
+
+        void dashedLine(double x1, double y1, double x2, double y2) {
+          const dash = 2.5, gap = 2.0;
+          final dx = x2 - x1, dy = y2 - y1;
+          final length = sqrt(dx * dx + dy * dy);
+          if (length == 0) return;
+          final ux = dx / length, uy = dy / length;
+          var pos = 0.0;
+          while (pos < length) {
+            final segEnd = pos + dash < length ? pos + dash : length;
+            canvas.moveTo(x1 + ux * pos, y1 + uy * pos);
+            canvas.lineTo(x1 + ux * segEnd, y1 + uy * segEnd);
+            pos += dash + gap;
+          }
+        }
+
+        dashedLine(0, 0, size.x, 0);
+        dashedLine(size.x, 0, size.x, size.y);
+        dashedLine(size.x, size.y, 0, size.y);
+        dashedLine(0, size.y, 0, 0);
+        canvas.strokePath();
+      },
+    );
+  }
+
   pw.Widget _buildCompactLabelPdf(Map<String, dynamic> label) {
     final companyName = label['company']?['name'] ?? '';
     final merchantName = label['merchant']?['full_name'] ?? '';
@@ -156,9 +212,13 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     // uses a left-QR / right-info layout instead, sized directly off the
     // real available space rather than one blanket scale factor.
     if (_labelWidth > _labelHeight) {
-      final qrSize = (_labelHeight - 16).clamp(24.0, 100.0);
-      return pw.Padding(
-        padding: const pw.EdgeInsets.all(3),
+      final qrSize = (_labelHeight - 24).clamp(20.0, 85.0);
+      // Padding widened further (5pt -> 9pt horizontal, plus a little top
+      // padding) so content sits well clear of the actual cut line even
+      // if there's some drift from the printer's own margin handling —
+      // "shrink more" per your last message.
+      final content = pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(9, 3, 9, 5),
         child: pw.Container(
           decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
           child: pw.Row(
@@ -214,7 +274,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                         padding: const pw.EdgeInsets.symmetric(horizontal: 6),
                         child: pw.Align(
                           alignment: pw.Alignment.centerLeft,
-                          child: pw.Text(consigneeName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5), maxLines: 1, overflow: pw.TextOverflow.clip),
+                          child: pw.Text(consigneeName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5), maxLines: 1, overflow: pw.TextOverflow.clip),
                         ),
                       ),
                     ),
@@ -236,13 +296,17 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
           ),
         ),
       );
+      // The dashed rectangle marks the exact physical die-cut boundary —
+      // print this on plain paper first and hold it against the real
+      // sticker sheet to confirm alignment before running actual stock.
+      return _activePreset.zeroGap ? pw.Stack(children: [_cutGuide(_labelWidth, _labelHeight), content]) : content;
     }
 
     final s = _scaleFactor;
-    final qrSize = (78.0 * s).clamp(32.0, 78.0); // never let the QR get unscannably small
+    final qrSize = (66.0 * s).clamp(26.0, 66.0); // never let the QR get unscannably small
 
     return pw.Padding(
-      padding: pw.EdgeInsets.all(4 * s),
+      padding: pw.EdgeInsets.fromLTRB(3 * s, 0, 3 * s, 3 * s),
       child: pw.Container(
         decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
         child: pw.Column(
@@ -336,9 +400,11 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     // FROM/TO block instead of in their own rows, freeing enough space to
     // show the address lines too.
     if (_labelWidth > _labelHeight) {
-      final qrSize = (_labelHeight - 20).clamp(30.0, 110.0);
-      return pw.Padding(
-        padding: const pw.EdgeInsets.all(3),
+      final qrSize = (_labelHeight - 28).clamp(26.0, 95.0);
+      // Padding widened further (5pt -> 9pt horizontal, plus a little top
+      // padding), same reasoning as the compact template.
+      final content = pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(9, 3, 9, 5),
         child: pw.Container(
           decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
           child: pw.Row(
@@ -432,14 +498,15 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
           ),
         ),
       );
+      return _activePreset.zeroGap ? pw.Stack(children: [_cutGuide(_labelWidth, _labelHeight), content]) : content;
     }
 
     final s = _scaleFactor;
-    final qrSize = (52.0 * s).clamp(28.0, 52.0); // never let the QR get unscannably small
+    final qrSize = (44.0 * s).clamp(22.0, 44.0); // never let the QR get unscannably small
     final showAddress = s > 0.7; // only tall enough presets can afford the extra address lines
 
     return pw.Padding(
-      padding: pw.EdgeInsets.all(4 * s),
+      padding: pw.EdgeInsets.fromLTRB(3 * s, 0, 3 * s, 3 * s),
       child: pw.Container(
         decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
         child: pw.Column(
