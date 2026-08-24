@@ -39,7 +39,11 @@ class _DriverProofScreenState extends State<DriverProofScreen> {
 
   Future<void> _takePhoto({bool isSecond = false}) async {
     final picker = ImagePicker();
-    final photo = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    // maxWidth/maxHeight matter more for upload speed than imageQuality
+    // alone — modern phone cameras shoot 4000px+ wide by default, and even
+    // at 70% JPEG quality that's still several MB. 1280px is plenty for a
+    // proof photo that's only ever glanced at on a phone or dashboard.
+    final photo = await picker.pickImage(source: ImageSource.camera, imageQuality: 70, maxWidth: 1280, maxHeight: 1280);
     if (photo != null) {
       await PhotoStampService.stampPhotoInPlace(photo.path);
       setState(() {
@@ -54,7 +58,7 @@ class _DriverProofScreenState extends State<DriverProofScreen> {
 
   Future<void> _pickFromGallery() async {
     final picker = ImagePicker();
-    final photo = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final photo = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70, maxWidth: 1280, maxHeight: 1280);
     if (photo != null) setState(() => _photoPath = photo.path);
   }
 

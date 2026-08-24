@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/location_tracking_service.dart';
 import 'driver_home_tab.dart';
 import 'driver_collect_tab.dart';
+import 'driver_cod_screen.dart';
 import '../widgets/scan_mode_settings_tile.dart';
 
 class DriverHomeScreen extends StatefulWidget {
@@ -196,6 +197,13 @@ class _MoreTab extends StatelessWidget {
             leading: const CircleAvatar(backgroundColor: AppColors.purple, child: Icon(Icons.person, color: Colors.white)),
             title: Text(supabase.auth.currentUser?.email ?? ''),
             subtitle: const Text('Driver'),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.payments_outlined, color: AppColors.purple),
+            title: const Text("Today's COD Collection"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverCodScreen())),
           ),
           const Divider(),
           const ScanModeSettingsTile(),

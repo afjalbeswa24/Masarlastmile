@@ -337,6 +337,7 @@ class _MobitrackTabState extends State<_MobitrackTab> {
     return _positions.where((pos) => _label(pos).toString().toLowerCase().contains(query)).toList();
   }
 
+  // ignore: unused_element
   void _focusOnVehicle(Map<String, dynamic> pos) {
     _mapController.move(LatLng(pos['lat'], pos['lng']), 15);
     _showVehicleInfo(pos);
@@ -344,6 +345,7 @@ class _MobitrackTabState extends State<_MobitrackTab> {
 
   @override
   Widget build(BuildContext context) {
+    // ignore: unused_local_variable
     const defaultCenter = LatLng(25.2854, 51.5310); // Doha, Qatar
     final filtered = _filteredPositions;
 
