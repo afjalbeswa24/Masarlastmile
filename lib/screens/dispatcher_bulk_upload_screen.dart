@@ -27,6 +27,18 @@ class _DispatcherBulkUploadScreenState extends State<DispatcherBulkUploadScreen>
 
   final _requiredColumns = ['Consignee Name', 'Phone', 'Full Address'];
 
+  // Excel's library sometimes returns a time cell as "8:00" and sometimes
+  // as "8:00:00" depending on how the cell itself was formatted — blindly
+  // appending ":00" to the latter produced "8:00:00:00", which Postgres
+  // rejects. This normalizes either shape to a valid HH:MM:SS.
+  String? _normalizeTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final trimmed = raw.trim();
+    final colonCount = trimmed.split(':').length - 1;
+    if (colonCount >= 2) return trimmed; // already HH:MM:SS
+    return '$trimmed:00'; // was just HH:MM
+  }
+
   @override
   void initState() {
     super.initState();
@@ -161,8 +173,8 @@ class _DispatcherBulkUploadScreenState extends State<DispatcherBulkUploadScreen>
         'delivery_date': (rowMap['Delivery Date']?.isNotEmpty ?? false)
             ? rowMap['Delivery Date']
             : _fmtDate(_defaultDeliveryDate!),
-        'delivery_window_start': (rowMap['After']?.isNotEmpty ?? false) ? '${rowMap['After']}:00' : null,
-        'delivery_window_end': (rowMap['Before']?.isNotEmpty ?? false) ? '${rowMap['Before']}:00' : null,
+        'delivery_window_start': _normalizeTime(rowMap['After']),
+        'delivery_window_end': _normalizeTime(rowMap['Before']),
         'notes': rowMap['Notes'] ?? '',
       });
     }
