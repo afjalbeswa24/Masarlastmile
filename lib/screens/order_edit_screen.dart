@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,6 +23,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
   late TextEditingController _consigneeController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
+  late TextEditingController _districtController;
   late TextEditingController _cityController;
   late TextEditingController _quantityController;
   late TextEditingController _codController;
@@ -83,6 +83,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     _consigneeController = TextEditingController(text: data['consignee_name'] ?? '');
     _phoneController = TextEditingController(text: data['phone'] ?? '');
     _addressController = TextEditingController(text: data['full_address'] ?? '');
+    _districtController = TextEditingController(text: data['district'] ?? '');
     _cityController = TextEditingController(text: data['city'] ?? '');
     _quantityController = TextEditingController(text: '${data['quantity'] ?? 1}');
     _codController = TextEditingController(text: '${data['cod_amount'] ?? 0}');
@@ -145,6 +146,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
         'consignee_name': _consigneeController.text.trim(),
         'phone': _phoneController.text.trim(),
         'full_address': _addressController.text.trim(),
+        'district': _districtController.text.trim(),
         'city': _cityController.text.trim(),
         'quantity': int.tryParse(_quantityController.text) ?? 1,
         'cod_amount': double.tryParse(_codController.text) ?? 0,
@@ -280,6 +282,12 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
               maxLines: 2,
               decoration: const InputDecoration(
                   labelText: 'Full Address', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _districtController,
+              decoration: const InputDecoration(
+                  labelText: 'District (optional)', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             TextField(

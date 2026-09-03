@@ -200,6 +200,11 @@ class _OrderDataGridState extends State<OrderDataGrid> {
       cellBuilder: (ctx, o) => Tooltip(message: o['full_address'] ?? '', child: Text(o['full_address'] ?? '', overflow: TextOverflow.ellipsis)),
     ),
     _ColDef(
+      key: 'district', label: 'District', width: 130, sortable: true,
+      sortValue: (o) => (o['district'] ?? '') as String,
+      cellBuilder: (ctx, o) => Tooltip(message: o['district'] ?? '', child: Text(o['district'] ?? '', overflow: TextOverflow.ellipsis)),
+    ),
+    _ColDef(
       key: 'city', label: 'City', width: 100, sortable: true,
       sortValue: (o) => (o['city'] ?? '') as String,
       cellBuilder: (ctx, o) => Tooltip(message: o['city'] ?? '', child: Text(o['city'] ?? '', style: const TextStyle(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),

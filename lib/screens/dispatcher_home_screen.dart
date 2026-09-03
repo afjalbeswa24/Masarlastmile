@@ -49,7 +49,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
     'id': false, 'pod': true, 'audit': true, 'merchant': true, 'status': true,
     'date': true, 'after': true, 'before': true, 'awb': true, 'company': true,
     'driver': true, 'quantity': true, 'cod': true, 'consignee': true,
-    'address': true, 'city': true, 'phone': true,
+    'address': true, 'district': true, 'city': true, 'phone': true,
     'delivery_type': true, 'remote_area': true, 'notes': false,
     'delivery_start': false, 'delivery_end': false,
     'collected': false, 'failure_reason': false, 'punctuality': false,
@@ -85,7 +85,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
     setState(() => _loading = true);
 
     var query = supabase.from('orders').select('''
-      id, order_code, order_number, status, consignee_name, phone, full_address, city,
+      id, order_code, order_number, status, consignee_name, phone, full_address, city, district,
       quantity, cod_amount, delivery_date, delivery_window_start, delivery_window_end,
       assigned_driver_id, assigned_collection_id, merchant_id, company_id, notes, proof_photo_url,
       delivered_at, out_for_delivery_at, collected_amount, failure_reason, proof_photo_url_2,
@@ -219,6 +219,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
       'cod': 'COD Amount',
       'consignee': 'Consignee Name',
       'address': 'Full Address',
+      'district': 'District',
       'city': 'City',
       'phone': 'Phone',
       'delivery_start': 'Delivery Start',
@@ -281,6 +282,9 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
             break;
           case 'address':
             row.add(xl.TextCellValue(order['full_address'] ?? ''));
+            break;
+          case 'district':
+            row.add(xl.TextCellValue(order['district'] ?? ''));
             break;
           case 'city':
             row.add(xl.TextCellValue(order['city'] ?? ''));

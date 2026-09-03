@@ -25,6 +25,7 @@ class _MerchantManageColumnsDialogState extends State<MerchantManageColumnsDialo
     'cod': 'COD Amount',
     'consignee': 'Consignee Name',
     'address': 'Full Address',
+    'district': 'District',
     'city': 'City',
     'phone': 'Phone',
     'delivery_type': 'Delivery Type',

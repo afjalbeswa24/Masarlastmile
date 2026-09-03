@@ -16,6 +16,7 @@ class _MerchantNewTaskScreenState extends State<MerchantNewTaskScreen> {
   List<Map<String, dynamic>> _customers = [];
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  final _districtController = TextEditingController();
   final _cityController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _codController = TextEditingController(text: '0');
@@ -53,6 +54,7 @@ class _MerchantNewTaskScreenState extends State<MerchantNewTaskScreen> {
         'consignee_name': _consigneeController.text.trim(),
         'phone': _phoneController.text.trim(),
         'full_address': _addressController.text.trim(),
+        'district': _districtController.text.trim(),
         'city': _cityController.text.trim(),
         'quantity': int.tryParse(_quantityController.text) ?? 1,
         'cod_amount': double.tryParse(_codController.text) ?? 0,
@@ -129,6 +131,11 @@ class _MerchantNewTaskScreenState extends State<MerchantNewTaskScreen> {
                 maxLines: 2,
                 decoration: const InputDecoration(labelText: 'Full Address', border: OutlineInputBorder()),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _districtController,
+                decoration: const InputDecoration(labelText: 'District (optional)', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               TextFormField(

@@ -41,7 +41,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
     workbook.delete('Sheet1');
 
     final headers = [
-      'Consignee Name', 'Phone', 'Full Address', 'City', 'Quantity',
+      'Consignee Name', 'Phone', 'Full Address', 'District', 'City', 'Quantity',
       'COD Amount', 'Delivery Date', 'After', 'Before', 'Notes'
     ];
     sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
@@ -50,6 +50,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
       xl.TextCellValue('Ahmed Al-Sayed'),
       xl.TextCellValue('97455529019'),
       xl.TextCellValue('Zone 67, Street 850, Building 115'),
+      xl.TextCellValue('Al Waab'),
       xl.TextCellValue('Doha'),
       xl.TextCellValue('2'),
       xl.TextCellValue('150'),
@@ -148,6 +149,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
         'phone': phone,
         'full_address': address,
         'city': rowMap['City'] ?? '',
+        'district': rowMap['District'] ?? '',
         'quantity': int.tryParse(rowMap['Quantity'] ?? '') ?? 1,
         'cod_amount': double.tryParse(rowMap['COD Amount'] ?? '') ?? 0,
         'delivery_date': (rowMap['Delivery Date']?.isNotEmpty ?? false) ? rowMap['Delivery Date'] : null,

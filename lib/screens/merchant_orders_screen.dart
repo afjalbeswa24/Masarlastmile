@@ -40,7 +40,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     'id': false, 'pod': true, 'audit': true, 'status': true,
     'date': true, 'after': true, 'before': true, 'awb': true,
     'quantity': true, 'cod': true, 'consignee': true,
-    'address': true, 'city': true, 'phone': true,
+    'address': true, 'district': true, 'city': true, 'phone': true,
     'delivery_type': true, 'remote_area': true, 'notes': false,
     // Dispatcher-only columns — explicitly off since the shared grid
     // widget defaults unlisted columns to visible.
@@ -72,7 +72,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     final merchantId = supabase.auth.currentUser!.id;
 
     var query = supabase.from('orders').select('''
-      id, order_code, order_number, status, consignee_name, phone, full_address, city,
+      id, order_code, order_number, status, consignee_name, phone, full_address, city, district,
       quantity, cod_amount, delivery_date, delivery_window_start, delivery_window_end,
       notes, proof_photo_url, proof_photo_url_2,
       delivery_type, remote_area, merchant_id,
@@ -178,6 +178,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       'cod': 'COD Amount',
       'consignee': 'Consignee Name',
       'address': 'Full Address',
+      'district': 'District',
       'city': 'City',
       'phone': 'Phone',
       'date': 'Delivery Date',
@@ -204,6 +205,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
           case 'cod': row.add(xl.TextCellValue('${order['cod_amount'] ?? ''}')); break;
           case 'consignee': row.add(xl.TextCellValue(order['consignee_name'] ?? '')); break;
           case 'address': row.add(xl.TextCellValue(order['full_address'] ?? '')); break;
+          case 'district': row.add(xl.TextCellValue(order['district'] ?? '')); break;
           case 'city': row.add(xl.TextCellValue(order['city'] ?? '')); break;
           case 'phone': row.add(xl.TextCellValue(order['phone'] ?? '')); break;
           case 'date': row.add(xl.TextCellValue(order['delivery_date'] ?? '')); break;
