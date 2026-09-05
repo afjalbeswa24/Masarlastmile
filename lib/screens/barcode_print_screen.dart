@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
+import '../utils/label_presets.dart';
 
 class BarcodePrintScreen extends StatefulWidget {
   final List<Map<String, dynamic>> orders;
@@ -17,38 +18,6 @@ class BarcodePrintScreen extends StatefulWidget {
   State<BarcodePrintScreen> createState() => _BarcodePrintScreenState();
 }
 
-class _LabelPreset {
-  final String name;
-  final double pageWidthMm;
-  final double pageHeightMm;
-  final int columns;
-  final int rows;
-  // True for pre-cut sticker sheets where the die-cuts butt right up
-  // against each other and against the page edge — printing with any page
-  // margin or inter-label spacing drifts the grid off the real cut lines
-  // as it goes down the page, which is what caused content to overlap
-  // onto the next physical sticker.
-  final bool zeroGap;
-  const _LabelPreset(this.name, this.pageWidthMm, this.pageHeightMm, this.columns, this.rows, {this.zeroGap = false});
-
-  int get perPage => columns * rows;
-}
-
-const _presets = [
-  _LabelPreset('A4 sheet · 3×4 (12 per page)', 210, 297, 3, 4),
-  _LabelPreset('A4 sheet · 2×8 (16 per page)', 210, 297, 2, 8),
-  _LabelPreset('A4 sheet · 2×4 (8 per page)', 210, 297, 2, 4),
-  _LabelPreset('A4 sheet · 2×2 (4 per page)', 210, 297, 2, 2),
-  _LabelPreset('A4 sheet · 2×7 (14 per page)', 210, 297, 2, 7),
-  // Matches a die-cut sheet of 37×105mm stickers, 2 columns x 8 rows,
-  // 0 gap: 2x105=210mm fills the A4 width exactly, 8x37=296mm ≈ the
-  // 297mm A4 height (within a fraction of a mm), so with zero margin and
-  // zero spacing each printed cell lands exactly on its physical sticker.
-  _LabelPreset('Pre-cut sticker sheet · 37×105mm, 2×8 (0 margin)', 210, 297, 2, 8, zeroGap: true),
-  _LabelPreset('Shipping label 4×6 in (1 per page)', 101.6, 152.4, 1, 1),
-  _LabelPreset('Sticker 3×2 in (1 per page)', 76.2, 50.8, 1, 1),
-];
-
 class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   List<Map<String, dynamic>> _labels = [];
   bool _loading = true;
@@ -57,16 +26,30 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   bool _useCustomSize = false;
   double _customWidthMm = 100;
   double _customHeightMm = 150;
+  String? _myRole;
+  String? _myDefaultPreset;
 
   double get _mmToPt => 2.83465;
+
+  // A merchant with a saved default only sees that one size (plus Custom,
+  // which is a separate always-available option in the dialog UI, not
+  // part of this list) — until a default is actually configured for them,
+  // they see everything, same as a dispatcher always does.
+  List<LabelPreset> get _visiblePresets {
+    if (_myRole == 'merchant' && _myDefaultPreset != null) {
+      final match = labelPresets.where((p) => p.name == _myDefaultPreset);
+      if (match.isNotEmpty) return [match.first];
+    }
+    return labelPresets;
+  }
 
   // The current label layout, derived from whichever preset (or custom
   // size) is selected — replaces what used to be fixed A4/3-column
   // constants, since different merchants print on different paper or
   // pre-cut sticker sizes.
-  _LabelPreset get _activePreset => _useCustomSize
-      ? _LabelPreset('Custom', _customWidthMm, _customHeightMm, 1, 1)
-      : _presets[_presetIndex];
+  LabelPreset get _activePreset => _useCustomSize
+      ? LabelPreset('Custom', _customWidthMm, _customHeightMm, 1, 1)
+      : _visiblePresets[_presetIndex.clamp(0, _visiblePresets.length - 1)];
 
   double get _pageWidth => _activePreset.pageWidthMm * _mmToPt;
   double get _pageHeight => _activePreset.pageHeightMm * _mmToPt;
@@ -100,6 +83,23 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   void initState() {
     super.initState();
     _loadBoxes();
+    _loadMyRoleAndDefault();
+  }
+
+  Future<void> _loadMyRoleAndDefault() async {
+    final data = await supabase
+        .from('profiles')
+        .select('role, default_label_preset')
+        .eq('id', supabase.auth.currentUser!.id)
+        .single();
+    setState(() {
+      _myRole = data['role'] as String?;
+      _myDefaultPreset = data['default_label_preset'] as String?;
+      // If this restricts the visible list down to one preset, make sure
+      // we're actually pointed at it rather than whatever index happened
+      // to be selected before this loaded.
+      if (_visiblePresets.length == 1) _presetIndex = 0;
+    });
   }
 
   Future<void> _loadBoxes() async {
@@ -1013,7 +1013,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ..._presets.asMap().entries.map((entry) {
+                      ..._visiblePresets.asMap().entries.map((entry) {
                         return RadioListTile<int>(
                           dense: true,
                           contentPadding: EdgeInsets.zero,
@@ -1128,7 +1128,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                         child: Text(
                           _useCustomSize
                               ? 'Custom · ${_customWidthMm.toStringAsFixed(0)}×${_customHeightMm.toStringAsFixed(0)} mm'
-                              : _presets[_presetIndex].name,
+                              : _visiblePresets[_presetIndex.clamp(0, _visiblePresets.length - 1)].name,
                           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                           overflow: TextOverflow.ellipsis,
                         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../utils/label_presets.dart';
 import '../theme/app_theme.dart';
 
 class ManageUsersScreen extends StatefulWidget {
@@ -141,6 +142,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
   late TextEditingController _phoneController;
   late TextEditingController _awbPrefixController;
   late TextEditingController _addressController;
+  String? _defaultLabelPreset;
   late String _role;
   late bool _canManageUsers;
   bool _saving = false;
@@ -154,6 +156,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
     _phoneController = TextEditingController(text: widget.user['phone'] ?? '');
     _awbPrefixController = TextEditingController(text: widget.user['awb_prefix'] ?? '');
     _addressController = TextEditingController(text: widget.user['address'] ?? '');
+    _defaultLabelPreset = widget.user['default_label_preset'];
     _role = widget.user['role'] ?? 'driver';
     _canManageUsers = widget.user['can_manage_users'] == true;
   }
@@ -184,6 +187,7 @@ class _EditUserSheetState extends State<_EditUserSheet> {
         if (_role == 'merchant') {
           updates['awb_prefix'] = _awbPrefixController.text.trim().toUpperCase();
           updates['address'] = _addressController.text.trim();
+          updates['default_label_preset'] = _defaultLabelPreset;
         }
       }
 
@@ -384,6 +388,22 @@ class _EditUserSheetState extends State<_EditUserSheet> {
                     hintText: 'Used on detailed print labels',
                     border: OutlineInputBorder(),
                   ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String?>(
+                  initialValue: _defaultLabelPreset,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Default Print Size (optional)',
+                    hintText: 'Once set, this merchant only sees this size + Custom when printing',
+                    hintMaxLines: 2,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('No default — show all sizes')),
+                    ...labelPresets.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name, overflow: TextOverflow.ellipsis))),
+                  ],
+                  onChanged: (v) => setState(() => _defaultLabelPreset = v),
                 ),
               ],
               if (_iAmMaster && _role == 'dispatcher') ...[
