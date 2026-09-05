@@ -38,6 +38,8 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
   String? _photoUrl2;
   double? _deliveredLat;
   double? _deliveredLng;
+  List<Map<String, dynamic>> _boxes = [];
+  final Map<String, TextEditingController> _boxNoteControllers = {};
 
   final _statuses = [
     'pending', 'picked_up', 'sorted', 'assigned',
@@ -99,6 +101,16 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     _deliveredLng = data['delivered_lng'];
     if (data['delivery_date'] != null) {
       _deliveryDate = DateTime.tryParse(data['delivery_date']);
+    }
+
+    final boxData = await supabase
+        .from('order_boxes')
+        .select('id, box_number, box_code, note')
+        .eq('order_id', widget.orderId)
+        .order('box_number');
+    _boxes = List<Map<String, dynamic>>.from(boxData);
+    for (final box in _boxes) {
+      _boxNoteControllers[box['id']] = TextEditingController(text: box['note'] ?? '');
     }
 
     setState(() => _loading = false);
@@ -163,6 +175,11 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       }
 
       await supabase.from('orders').update(updates).eq('id', widget.orderId);
+
+      for (final box in _boxes) {
+        final noteText = _boxNoteControllers[box['id']]?.text.trim() ?? '';
+        await supabase.from('order_boxes').update({'note': noteText}).eq('id', box['id']);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -394,6 +411,27 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
               decoration: const InputDecoration(
                   labelText: 'Notes', border: OutlineInputBorder()),
             ),
+            if (_boxes.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text('Box Notes (optional)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 4),
+              const Text(
+                'Prints on that box\'s label only — e.g. day of consumption for a box with more than one item.',
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              ..._boxes.map((box) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: TextField(
+                      controller: _boxNoteControllers[box['id']],
+                      decoration: InputDecoration(
+                        labelText: 'Box ${box['box_number']} of ${_boxes.length} — ${box['box_code']}',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  )),
+            ],
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _saving ? null : _save,

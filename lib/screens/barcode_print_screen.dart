@@ -106,7 +106,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final orderIds = widget.orders.map((o) => o['id'] as String).toList();
     final boxes = await supabase
         .from('order_boxes')
-        .select('order_id, box_number, box_code')
+        .select('order_id, box_number, box_code, note')
         .inFilter('order_id', orderIds)
         .order('box_number');
 
@@ -130,10 +130,10 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
       final total = orderBoxes.isEmpty ? 1 : orderBoxes.length;
       final merchantAddress = merchantAddresses[order['merchant_id']] ?? '';
       if (orderBoxes.isEmpty) {
-        labels.add({...order, 'box_code': order['order_code'], 'box_number': 1, 'box_total': 1, 'merchant_address': merchantAddress});
+        labels.add({...order, 'box_code': order['order_code'], 'box_number': 1, 'box_total': 1, 'merchant_address': merchantAddress, 'box_note': ''});
       } else {
         for (final b in orderBoxes) {
-          labels.add({...order, 'box_code': b['box_code'], 'box_number': b['box_number'], 'box_total': total, 'merchant_address': merchantAddress});
+          labels.add({...order, 'box_code': b['box_code'], 'box_number': b['box_number'], 'box_total': total, 'merchant_address': merchantAddress, 'box_note': b['note'] ?? ''});
         }
       }
     }
@@ -408,6 +408,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final deliveryType = (label['delivery_type'] ?? 'standard').toString();
     final codAmount = (label['cod_amount'] ?? 0);
     final hasCod = codAmount is num && codAmount > 0;
+    final boxNote = (label['box_note'] ?? '').toString().trim();
 
     // Short, wide cells (e.g. 2x8 / 16-per-page) have height as the scarce
     // dimension, not width — the old header+QR-row+footer stack wasted a
@@ -508,6 +509,8 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text(deliveryType[0].toUpperCase() + deliveryType.substring(1), style: const pw.TextStyle(fontSize: 6)),
+                          if (boxNote.isNotEmpty)
+                            pw.Text(boxNote, style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold)),
                           pw.Text('Box $boxNumber/$boxTotal', style: const pw.TextStyle(fontSize: 6)),
                         ],
                       ),
@@ -715,6 +718,80 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final boxTotal = label['box_total'] ?? 1;
     final codAmount = label['cod_amount'] ?? 0;
     final hasCod = codAmount is num && codAmount > 0;
+    final boxNote = (label['box_note'] ?? '').toString().trim();
+    final isLandscape = _labelWidth > _labelHeight;
+
+    if (isLandscape) {
+      // Mirrors the QR-left / info-right layout used for wide, short
+      // presets (e.g. 16-per-page) in the actual PDF, instead of showing
+      // the tall stacked layout that was never what actually prints there.
+      return Container(
+        width: 300,
+        decoration: BoxDecoration(border: Border.all(color: Colors.black54), borderRadius: BorderRadius.circular(4)),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 90,
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(border: Border(right: BorderSide(color: Colors.black26))),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    fw.BarcodeWidget(barcode: fw.Barcode.qrCode(), data: boxCode, width: 64, height: 64, drawText: false),
+                    const SizedBox(height: 4),
+                    Text(boxCode, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 9), textAlign: TextAlign.center),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(child: Text(companyName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), overflow: TextOverflow.ellipsis)),
+                          Text(_fmtDateTime(label), style: const TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: Text('FROM: $merchantName', style: const TextStyle(fontSize: 9), overflow: TextOverflow.ellipsis),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(consigneeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Box $boxNumber/$boxTotal', style: const TextStyle(fontSize: 9)),
+                          Text(city, style: const TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Container(
       width: 190,
@@ -746,7 +823,17 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
             ),
           ),
           const Divider(height: 1),
-          Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8), child: Text('FROM: $merchantName', style: const TextStyle(fontSize: 10), overflow: TextOverflow.ellipsis)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('FROM: $merchantName', style: const TextStyle(fontSize: 10), overflow: TextOverflow.ellipsis),
+                if (boxNote.isNotEmpty)
+                  Text(boxNote, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(10),
@@ -783,9 +870,11 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     final deliveryType = (label['delivery_type'] ?? 'standard').toString();
     final codAmount = label['cod_amount'] ?? 0;
     final hasCod = codAmount is num && codAmount > 0;
+    final boxNote = (label['box_note'] ?? '').toString().trim();
+    final isLandscape = _labelWidth > _labelHeight;
 
     return Container(
-      width: 260,
+      width: isLandscape ? 300 : 260,
       decoration: BoxDecoration(border: Border.all(color: Colors.black54), borderRadius: BorderRadius.circular(4)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -824,36 +913,52 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                   ),
                 ),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Column(
+                  child: isLandscape
+                      // Landscape branch of the real PDF prints FROM/TO as a
+                      // single line each ("FROM: Name"), not the separate
+                      // label-then-name style used for portrait presets.
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('FROM: $merchantName', style: const TextStyle(fontSize: 9), overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              Text('TO: $consigneeName', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        )
+                      : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('FROM', style: TextStyle(fontSize: 9, color: Colors.black45)),
-                            Text(merchantName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), overflow: TextOverflow.ellipsis),
-                            if (merchantAddress.isNotEmpty)
-                              Text(merchantAddress, style: const TextStyle(fontSize: 9), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('FROM', style: TextStyle(fontSize: 9, color: Colors.black45)),
+                                  Text(merchantName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), overflow: TextOverflow.ellipsis),
+                                  if (merchantAddress.isNotEmpty)
+                                    Text(merchantAddress, style: const TextStyle(fontSize: 9), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('TO', style: TextStyle(fontSize: 9, color: Colors.black45)),
+                                  Text(consigneeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
+                                  if (consigneeAddress.isNotEmpty)
+                                    Text(consigneeAddress, style: const TextStyle(fontSize: 9), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                      const Divider(height: 1),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('TO', style: TextStyle(fontSize: 9, color: Colors.black45)),
-                            Text(consigneeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
-                            if (consigneeAddress.isNotEmpty)
-                              Text(consigneeAddress, style: const TextStyle(fontSize: 9), maxLines: 2, overflow: TextOverflow.ellipsis),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -865,6 +970,8 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(deliveryType[0].toUpperCase() + deliveryType.substring(1), style: const TextStyle(fontSize: 9)),
+                if (boxNote.isNotEmpty)
+                  Text(boxNote, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
                 Text('Box $boxNumber/$boxTotal', style: const TextStyle(fontSize: 9)),
                 Text(_fmtDateTime(label), style: const TextStyle(fontSize: 9)),
               ],
@@ -890,7 +997,9 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
               title: const Text('Paper & Label Size'),
               content: SizedBox(
                 width: 340,
-                child: RadioGroup<int>(
+                height: 420,
+                child: SingleChildScrollView(
+                  child: RadioGroup<int>(
                   groupValue: tempCustom ? -1 : tempPreset,
                   onChanged: (v) => setDialogState(() {
                     if (v == -1) {
@@ -947,6 +1056,7 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
                         child: Text('One label per page — for pre-cut stickers fed individually.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                       ),
                   ],
+                ),
                 ),
                 ),
               ),
