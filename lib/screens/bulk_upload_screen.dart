@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as xl;
+import '../utils/xlsx_repair.dart';
 import 'package:csv/csv.dart';
 import 'package:file_saver/file_saver.dart';
 import '../main.dart';
@@ -93,7 +94,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
         final content = String.fromCharCodes(file.bytes!);
         rows = const CsvToListConverter().convert(content, eol: '\n');
       } else {
-        final excelFile = xl.Excel.decodeBytes(file.bytes!);
+        final excelFile = xl.Excel.decodeBytes(repairXlsxNumFmts(file.bytes!));
         final sheet = excelFile.tables[excelFile.tables.keys.first]!;
         rows = sheet.rows
             .map((row) => row.map((cell) => cell?.value ?? '').toList())
