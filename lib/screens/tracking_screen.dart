@@ -148,7 +148,7 @@ class _MobileGpsTabState extends State<_MobileGpsTab> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2f63_1_05dd8fddba4ddd40cde91129',
                     subdomains: const ['a', 'b', 'c', 'd'],
                     userAgentPackageName: 'com.masar.delivery',
                   ),
