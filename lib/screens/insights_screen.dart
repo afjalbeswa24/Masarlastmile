@@ -46,13 +46,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
           merchant:profiles!orders_merchant_id_fkey(full_name)
         ''')
         .gte('delivery_date', _fmtDate(_rangeStart))
-        .lte('delivery_date', _fmtDate(_rangeEnd));
+        .lte('delivery_date', _fmtDate(_rangeEnd))
+        .range(0, 19999);
 
     final yearData = await supabase
         .from('orders')
         .select('id, created_at')
         .gte('created_at', DateTime(_chartYear, 1, 1).toIso8601String())
-        .lt('created_at', DateTime(_chartYear + 1, 1, 1).toIso8601String());
+        .lt('created_at', DateTime(_chartYear + 1, 1, 1).toIso8601String())
+        .range(0, 19999);
 
     setState(() {
       _orders = List<Map<String, dynamic>>.from(rangeData);

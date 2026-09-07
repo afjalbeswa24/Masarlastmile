@@ -29,7 +29,8 @@ class _MerchantExportDialogState extends State<MerchantExportDialog> {
           .eq('merchant_id', merchantId)
           .gte('created_at', _startDate.toIso8601String())
           .lte('created_at', _endDate.add(const Duration(days: 1)).toIso8601String())
-          .order('created_at');
+          .order('created_at')
+          .range(0, 19999);
 
       final workbook = xl.Excel.createExcel();
       final sheet = workbook['Orders'];

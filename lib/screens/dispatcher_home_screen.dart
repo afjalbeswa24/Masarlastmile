@@ -146,7 +146,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
           .lte('delivery_date', _fmtDate(_dateRange!.end));
     }
 
-    final data = await query.order('created_at', ascending: false);
+    final data = await query.order('created_at', ascending: false).range(0, 19999);
     var orders = List<Map<String, dynamic>>.from(data);
 
     if (_filters.punctuality.isNotEmpty) {

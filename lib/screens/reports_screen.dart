@@ -212,7 +212,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           .lte('delivery_date', _fmtDate(_dateRange!.end));
     }
 
-    final data = await query;
+    final data = await query.range(0, 19999);
 
     // Count boxes for orders in this date range via a server-side join,
     // instead of passing every matching order id through the URL — that
@@ -224,7 +224,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           .gte('orders.delivery_date', _fmtDate(_dateRange!.start))
           .lte('orders.delivery_date', _fmtDate(_dateRange!.end));
     }
-    final boxes = await boxQuery;
+    final boxes = await boxQuery.range(0, 19999);
     boxCount = List.from(boxes).length;
 
     // Per-merchant, per-status box counts for the Merchant Volume report —
@@ -236,7 +236,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           .gte('orders.delivery_date', _fmtDate(_dateRange!.start))
           .lte('orders.delivery_date', _fmtDate(_dateRange!.end));
     }
-    final merchantBoxes = await merchantBoxQuery;
+    final merchantBoxes = await merchantBoxQuery.range(0, 19999);
     final boxStatsByMerchant = <String, Map<String, int>>{};
     for (final b in List.from(merchantBoxes)) {
       final merchantId = b['orders']?['merchant_id'] as String?;

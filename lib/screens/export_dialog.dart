@@ -89,7 +89,8 @@ class _ExportDialogState extends State<ExportDialog> {
           ''')
           .gte('delivery_date', _fmtDate(_startDate))
           .lte('delivery_date', _fmtDate(_endDate))
-          .order('delivery_date');
+          .order('delivery_date')
+          .range(0, 19999);
 
       final activeKeys = _columnMap.keys.where((k) => widget.columnVisibility[k] ?? false).toList();
 
