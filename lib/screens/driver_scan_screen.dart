@@ -20,7 +20,7 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
   bool _lastSuccess = false;
   List<Map<String, dynamic>> _remainingSorted = [];
   bool _loadingList = true;
-  bool _allowManualOfd = true;
+  bool _allowManualOfd = false;
 
   String _todayStr() => QatarTime.todayStr();
 
@@ -47,7 +47,7 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
         .eq('id', supabase.auth.currentUser!.id)
         .single();
     if (mounted) {
-      setState(() => _allowManualOfd = profile['company']?['allow_manual_ofd'] ?? true);
+      setState(() => _allowManualOfd = profile['company']?['allow_manual_ofd'] ?? false);
     }
   }
 
