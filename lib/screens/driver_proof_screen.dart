@@ -56,10 +56,50 @@ class _DriverProofScreenState extends State<DriverProofScreen> {
     }
   }
 
-  Future<void> _pickFromGallery() async {
+  Future<void> _pickFromGallery({bool isSecond = false}) async {
     final picker = ImagePicker();
     final photo = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70, maxWidth: 1280, maxHeight: 1280);
-    if (photo != null) setState(() => _photoPath = photo.path);
+    if (photo != null) {
+      // Camera photos always got this timestamp stamp; gallery-picked ones
+      // didn't — applying it here too now that gallery-pick is available
+      // for successful deliveries as well, not just failure photos.
+      await PhotoStampService.stampPhotoInPlace(photo.path);
+      setState(() {
+        if (isSecond) {
+          _photoPath2 = photo.path;
+        } else {
+          _photoPath = photo.path;
+        }
+      });
+    }
+  }
+
+  Future<void> _choosePhotoSource({bool isSecond = false}) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('From Storage'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == 'camera') {
+      await _takePhoto(isSecond: isSecond);
+    } else if (choice == 'gallery') {
+      await _pickFromGallery(isSecond: isSecond);
+    }
   }
 
   Future<void> _pickFailureReason() async {
@@ -320,7 +360,7 @@ class _DriverProofScreenState extends State<DriverProofScreen> {
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.photo_library_outlined),
                       label: const Text('From Storage'),
-                      onPressed: _pickFromGallery,
+                      onPressed: () => _pickFromGallery(),
                     ),
                   ),
                 ],
@@ -354,9 +394,9 @@ class _DriverProofScreenState extends State<DriverProofScreen> {
                               const Text('Take up to 2 photos showing the package was delivered.',
                                   textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
                               const SizedBox(height: 16),
-                              _photoBox(path: _photoPath, onTap: () => _takePhoto(), label: 'Photo 1 (required)'),
+                              _photoBox(path: _photoPath, onTap: () => _choosePhotoSource(), label: 'Photo 1 (required)'),
                               const SizedBox(height: 12),
-                              _photoBox(path: _photoPath2, onTap: () => _takePhoto(isSecond: true), label: 'Photo 2 (optional)'),
+                              _photoBox(path: _photoPath2, onTap: () => _choosePhotoSource(isSecond: true), label: 'Photo 2 (optional)'),
                             ],
                           )
                         : _buildFailForm(),

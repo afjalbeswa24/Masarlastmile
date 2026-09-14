@@ -40,6 +40,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   Set<String> _selectedIds = {};
   bool _loading = true;
   bool _isMaster = false;
+  String? _myCompanyId;
   final _searchController = TextEditingController();
 
   final _filters = OrderFilters();
@@ -73,10 +74,57 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   Future<void> _loadMyRole() async {
     final data = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, company_id')
         .eq('id', supabase.auth.currentUser!.id)
         .single();
-    if (mounted) setState(() => _isMaster = data['role'] == 'master_dispatcher');
+    if (mounted) {
+      setState(() {
+        _isMaster = data['role'] == 'master_dispatcher';
+        _myCompanyId = data['company_id'];
+      });
+    }
+  }
+
+  Future<void> _openCompanySettingsDialog() async {
+    if (_myCompanyId == null) return;
+    final company = await supabase.from('companies').select('allow_manual_ofd').eq('id', _myCompanyId!).single();
+    if (!mounted) return;
+    bool allowManualOfd = company['allow_manual_ofd'] ?? true;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Company Settings'),
+              content: SizedBox(
+                width: 360,
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Allow manual delivery entry'),
+                  subtitle: const Text(
+                    'Lets drivers mark an order "Out for Delivery" without scanning, for damaged or unreadable barcodes. Turn off to require scanning every time.',
+                  ),
+                  value: allowManualOfd,
+                  onChanged: (v) => setDialogState(() => allowManualOfd = v),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                FilledButton(
+                  onPressed: () async {
+                    await supabase.from('companies').update({'allow_manual_ofd': allowManualOfd}).eq('id', _myCompanyId!);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -531,6 +579,11 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                 _navItem('Reports', _DispatcherTab.reports),
                 const Spacer(),
                 if (_isMaster) ...[
+                  IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white70),
+                    tooltip: 'Company Settings',
+                    onPressed: _openCompanySettingsDialog,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.people_alt, color: Colors.white70),
                     tooltip: 'Manage Users',

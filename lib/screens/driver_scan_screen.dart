@@ -20,6 +20,7 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
   bool _lastSuccess = false;
   List<Map<String, dynamic>> _remainingSorted = [];
   bool _loadingList = true;
+  bool _allowManualOfd = true;
 
   String _todayStr() => QatarTime.todayStr();
 
@@ -36,6 +37,18 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
   void initState() {
     super.initState();
     _loadRemaining();
+    _loadCompanySetting();
+  }
+
+  Future<void> _loadCompanySetting() async {
+    final profile = await supabase
+        .from('profiles')
+        .select('company_id, company:companies(allow_manual_ofd)')
+        .eq('id', supabase.auth.currentUser!.id)
+        .single();
+    if (mounted) {
+      setState(() => _allowManualOfd = profile['company']?['allow_manual_ofd'] ?? true);
+    }
   }
 
   Future<void> _loadRemaining() async {
@@ -207,13 +220,14 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
                         },
                       ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.touch_app),
-              label: const Text('Can\'t scan? Select order manually'),
-              onPressed: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverManualOfdScreen()));
+          if (_allowManualOfd)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.touch_app),
+                label: const Text('Can\'t scan? Select order manually'),
+                onPressed: () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverManualOfdScreen()));
                 _loadRemaining();
               },
             ),

@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show consolidateHttpClientResponseBytes;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_pill.dart';
 import 'driver_proof_screen.dart';
@@ -78,26 +82,29 @@ class DriverOrderDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _podPhoto(String url) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Image.network(
-        url,
-        fit: BoxFit.cover,
-        height: 180,
-        width: double.infinity,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return const SizedBox(
-            height: 180,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          );
-        },
-        errorBuilder: (context, error, stack) => Container(
+  Widget _podPhoto(BuildContext context, String url) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _FullscreenPhotoViewer(imageUrl: url))),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
+          fit: BoxFit.cover,
           height: 180,
-          color: AppColors.background,
-          alignment: Alignment.center,
-          child: const Text('Photo unavailable', style: TextStyle(color: AppColors.textSecondary)),
+          width: double.infinity,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return const SizedBox(
+              height: 180,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          },
+          errorBuilder: (context, error, stack) => Container(
+            height: 180,
+            color: AppColors.background,
+            alignment: Alignment.center,
+            child: const Text('Photo unavailable', style: TextStyle(color: AppColors.textSecondary)),
+          ),
         ),
       ),
     );
@@ -191,9 +198,9 @@ class DriverOrderDetailScreen extends StatelessWidget {
                                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                               const SizedBox(height: 12),
-                              if (photo1?.isNotEmpty ?? false) _podPhoto(photo1!),
+                              if (photo1?.isNotEmpty ?? false) _podPhoto(context, photo1!),
                               if ((photo1?.isNotEmpty ?? false) && (photo2?.isNotEmpty ?? false)) const SizedBox(height: 10),
-                              if (photo2?.isNotEmpty ?? false) _podPhoto(photo2!),
+                              if (photo2?.isNotEmpty ?? false) _podPhoto(context, photo2!),
                             ],
                           ),
                         ),
@@ -229,6 +236,72 @@ class DriverOrderDetailScreen extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FullscreenPhotoViewer extends StatefulWidget {
+  final String imageUrl;
+  const _FullscreenPhotoViewer({required this.imageUrl});
+
+  @override
+  State<_FullscreenPhotoViewer> createState() => _FullscreenPhotoViewerState();
+}
+
+class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
+  bool _sharing = false;
+
+  Future<void> _share() async {
+    setState(() => _sharing = true);
+    try {
+      // The photo lives in Supabase Storage as a URL — share_plus needs an
+      // actual local file to hand to WhatsApp/etc., so this downloads it
+      // to a temp file first, then shares that.
+      final request = await HttpClient().getUrl(Uri.parse(widget.imageUrl));
+      final response = await request.close();
+      final bytes = await consolidateHttpClientResponseBytes(response);
+
+      final dir = await getTemporaryDirectory();
+      final fileName = 'proof_of_delivery_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles([XFile(file.path)], text: 'Proof of Delivery');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not share this photo')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          _sharing
+              ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                )
+              : IconButton(icon: const Icon(Icons.share), onPressed: _share),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4,
+          child: Image.network(widget.imageUrl),
         ),
       ),
     );
