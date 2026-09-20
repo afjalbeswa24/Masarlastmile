@@ -15,6 +15,7 @@ class AuditTrailDialog extends StatefulWidget {
 class _AuditTrailDialogState extends State<AuditTrailDialog> {
   List<Map<String, dynamic>> _logs = [];
   bool _loading = true;
+  Map<String, String> _driverNames = {};
   final ScrollController _hController = ScrollController();
   final ScrollController _vController = ScrollController();
 
@@ -52,8 +53,17 @@ class _AuditTrailDialogState extends State<AuditTrailDialog> {
     final all = List<Map<String, dynamic>>.from(data);
     final filtered = all.where((log) => !_hiddenFields.contains(log['field'])).toList();
 
+    // assigned_driver_id changes are stored as a raw driver UUID, not a
+    // real embeddable relationship — resolve it to a readable name here
+    // rather than showing the ID as-is.
+    final profiles = await supabase.from('profiles').select('id, full_name');
+    final driverNames = <String, String>{
+      for (final p in profiles) p['id'] as String: p['full_name'] as String? ?? 'Unknown',
+    };
+
     setState(() {
       _logs = filtered;
+      _driverNames = driverNames;
       _loading = false;
     });
   }
@@ -71,8 +81,9 @@ class _AuditTrailDialogState extends State<AuditTrailDialog> {
     return RegExp(r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}').hasMatch(value);
   }
 
-  String _formatValue(String? value) {
+  String _formatValue(String? value, {bool isDriverField = false}) {
     if (value == null || value.isEmpty) return '';
+    if (isDriverField) return _driverNames[value] ?? value;
     if (_looksLikeTimestamp(value)) {
       try {
         final normalized = value.replaceFirst(' ', 'T');
@@ -139,13 +150,14 @@ class _AuditTrailDialogState extends State<AuditTrailDialog> {
                             DataColumn(label: Text('New Value')),
                           ],
                           rows: _logs.map((log) {
+                            final isDriverField = log['field'] == 'assigned_driver_id';
                             return DataRow(cells: [
                               DataCell(Text(_fmt(log['created_at']))),
                               DataCell(Text(log['user']?['full_name'] ?? 'System')),
                               DataCell(Text(log['action_type'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600))),
                               DataCell(Text(log['field'] ?? '')),
-                              DataCell(Text(_formatValue(log['old_value']))),
-                                        DataCell(Text(_formatValue(log['new_value']))),
+                              DataCell(Text(_formatValue(log['old_value'], isDriverField: isDriverField))),
+                                        DataCell(Text(_formatValue(log['new_value'], isDriverField: isDriverField))),
                             ]);
                           }).toList(),
                         ),

@@ -18,6 +18,8 @@ import 'new_task_screen.dart';
 import 'audit_trail_dialog.dart';
 import 'dispatcher_bulk_upload_screen.dart';
 import 'manage_users_screen.dart';
+import 'user_activity_screen.dart';
+import 'audit_log_cleanup_screen.dart';
 import 'insights_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'tracking_screen.dart';
@@ -583,6 +585,16 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                     icon: const Icon(Icons.settings, color: Colors.white70),
                     tooltip: 'Company Settings',
                     onPressed: _openCompanySettingsDialog,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.history, color: Colors.white70),
+                    tooltip: 'User Activity',
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserActivityScreen())),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.auto_delete_outlined, color: Colors.white70),
+                    tooltip: 'Activity Log Cleanup',
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuditLogCleanupScreen())),
                   ),
                   IconButton(
                     icon: const Icon(Icons.people_alt, color: Colors.white70),
