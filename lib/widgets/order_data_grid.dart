@@ -496,10 +496,12 @@ class _OrderDataGridState extends State<OrderDataGrid> {
                           thumbVisibility: true,
                           interactive: true,
                           notificationPredicate: (n) => n.depth == 0,
-                          child: SingleChildScrollView(
+                          child: ListView.builder(
                             controller: _vControllerLeft,
-                            child: Column(
-                              children: pageOrders.map((order) {
+                            itemExtent: _rowHeight,
+                            itemCount: pageOrders.length,
+                            itemBuilder: (context, index) {
+                                final order = pageOrders[index];
                                 final id = order['id'] as String;
                                 final isSelected = widget.selectedIds.contains(id);
                                 return Container(
@@ -540,8 +542,7 @@ class _OrderDataGridState extends State<OrderDataGrid> {
                                     ],
                                   ),
                                 );
-                              }).toList(),
-                            ),
+                            },
                           ),
                         ),
                       ),
@@ -583,10 +584,12 @@ class _OrderDataGridState extends State<OrderDataGrid> {
                                   thumbVisibility: true,
                                   interactive: true,
                                   notificationPredicate: (n) => n.depth == 0,
-                                  child: SingleChildScrollView(
+                                  child: ListView.builder(
                                     controller: _vControllerRight,
-                                    child: Column(
-                                      children: pageOrders.map((order) {
+                                    itemExtent: _rowHeight,
+                                    itemCount: pageOrders.length,
+                                    itemBuilder: (context, index) {
+                                        final order = pageOrders[index];
                                         final id = order['id'] as String;
                                         final isSelected = widget.selectedIds.contains(id);
                                         return Container(
@@ -600,8 +603,7 @@ class _OrderDataGridState extends State<OrderDataGrid> {
                                             ],
                                           ),
                                         );
-                                      }).toList(),
-                                    ),
+                                    },
                                   ),
                                 ),
                               ),
