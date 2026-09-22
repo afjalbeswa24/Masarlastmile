@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart' as xl;
@@ -41,6 +42,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   List<Map<String, dynamic>> _orders = [];
   Set<String> _selectedIds = {};
   bool _loading = true;
+  String? _loadError;
   bool _isMaster = false;
   String? _myCompanyId;
   final _searchController = TextEditingController();
@@ -74,16 +76,22 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   }
 
   Future<void> _loadMyRole() async {
-    final data = await supabase
-        .from('profiles')
-        .select('role, company_id')
-        .eq('id', supabase.auth.currentUser!.id)
-        .single();
-    if (mounted) {
-      setState(() {
-        _isMaster = data['role'] == 'master_dispatcher';
-        _myCompanyId = data['company_id'];
-      });
+    try {
+      final data = await supabase
+          .from('profiles')
+          .select('role, company_id')
+          .eq('id', supabase.auth.currentUser!.id)
+          .single()
+          .timeout(const Duration(seconds: 20));
+      if (mounted) {
+        setState(() {
+          _isMaster = data['role'] == 'master_dispatcher';
+          _myCompanyId = data['company_id'];
+        });
+      }
+    } catch (_) {
+      // Non-critical: worst case, master-only tools stay hidden until a
+      // retry succeeds — shouldn't block the rest of the screen either way.
     }
   }
 
@@ -132,7 +140,10 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _loadOrders({List<String>? awbFilter}) async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
 
     var query = supabase.from('orders').select('''
       id, order_code, order_number, status, consignee_name, phone, full_address, city, district,
@@ -196,27 +207,46 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
           .lte('delivery_date', _fmtDate(_dateRange!.end));
     }
 
-    final data = await query.order('created_at', ascending: false).range(0, 19999);
-    var orders = List<Map<String, dynamic>>.from(data);
+    try {
+      final data = await query.order('created_at', ascending: false).range(0, 19999).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw TimeoutException('Loading orders took too long'),
+      );
+      var orders = List<Map<String, dynamic>>.from(data);
 
-    if (_filters.punctuality.isNotEmpty) {
-      orders = orders.where((o) {
-        if (o['status'] != 'delivered' || o['delivered_at'] == null) return false;
-        final start = o['delivery_window_start'] as String?;
-        final end = o['delivery_window_end'] as String?;
-        if (start == null || end == null) return false;
-        final delivered = DateTime.parse(o['delivered_at']).toLocal();
-        final hm = '${delivered.hour.toString().padLeft(2, '0')}:${delivered.minute.toString().padLeft(2, '0')}:00';
-        final label = hm.compareTo(start) < 0 ? 'Early' : (hm.compareTo(end) > 0 ? 'Late' : 'On Time');
-        return _filters.punctuality.contains(label);
-      }).toList();
+      if (_filters.punctuality.isNotEmpty) {
+        orders = orders.where((o) {
+          if (o['status'] != 'delivered' || o['delivered_at'] == null) return false;
+          final start = o['delivery_window_start'] as String?;
+          final end = o['delivery_window_end'] as String?;
+          if (start == null || end == null) return false;
+          final delivered = DateTime.parse(o['delivered_at']).toLocal();
+          final hm = '${delivered.hour.toString().padLeft(2, '0')}:${delivered.minute.toString().padLeft(2, '0')}:00';
+          final label = hm.compareTo(start) < 0 ? 'Early' : (hm.compareTo(end) > 0 ? 'Late' : 'On Time');
+          return _filters.punctuality.contains(label);
+        }).toList();
+      }
+
+      if (mounted) {
+        setState(() {
+          _orders = orders;
+          _selectedIds = {};
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      // A stalled connection (rather than a clean failure) used to leave
+      // this screen spinning forever with no way to recover except
+      // closing the tab — this now fails visibly with a way to retry.
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = e is TimeoutException
+              ? 'This is taking longer than expected. Check your connection and try again.'
+              : 'Could not load orders. Please try again.';
+        });
+      }
     }
-
-    setState(() {
-      _orders = orders;
-      _selectedIds = {};
-      _loading = false;
-    });
   }
 
   void _runSearch() {
@@ -519,7 +549,24 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _orders.isEmpty
+              : _loadError != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.wifi_off, size: 40, color: AppColors.textSecondary),
+                          const SizedBox(height: 12),
+                          Text(_loadError!, style: const TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () => _loadOrders(),
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _orders.isEmpty
                   ? const Center(child: Text('No orders found', style: TextStyle(color: AppColors.textSecondary)))
                   : Container(
                       color: Colors.white,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart' as xl;
@@ -30,6 +31,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   List<Map<String, dynamic>> _orders = [];
   Set<String> _selectedIds = {};
   bool _loading = true;
+  String? _loadError;
   final _searchController = TextEditingController();
   final _filters = OrderFilters();
   DateTimeRange? _dateRange;
@@ -68,7 +70,10 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   }
 
   Future<void> _loadOrders({List<String>? awbFilter}) async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     final merchantId = supabase.auth.currentUser!.id;
 
     var query = supabase.from('orders').select('''
@@ -105,13 +110,29 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
           .lte('delivery_date', _fmtDate(_dateRange!.end));
     }
 
-    final data = await query.order('created_at', ascending: false).range(0, 19999);
+    try {
+      final data = await query.order('created_at', ascending: false).range(0, 19999).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw TimeoutException('Loading orders took too long'),
+      );
 
-    setState(() {
-      _orders = List<Map<String, dynamic>>.from(data);
-      _selectedIds = {};
-      _loading = false;
-    });
+      if (mounted) {
+        setState(() {
+          _orders = List<Map<String, dynamic>>.from(data);
+          _selectedIds = {};
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = e is TimeoutException
+              ? 'This is taking longer than expected. Check your connection and try again.'
+              : 'Could not load orders. Please try again.';
+        });
+      }
+    }
   }
 
   void _runSearch() {
@@ -345,7 +366,24 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _orders.isEmpty
+                : _loadError != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.wifi_off, size: 40, color: AppColors.textSecondary),
+                            const SizedBox(height: 12),
+                            Text(_loadError!, style: const TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+                            const SizedBox(height: 12),
+                            FilledButton.icon(
+                              onPressed: () => _loadOrders(),
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _orders.isEmpty
                     ? const Center(child: Text('No orders found', style: TextStyle(color: AppColors.textSecondary)))
                     : Container(
                         color: Colors.white,
