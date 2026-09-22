@@ -15,7 +15,6 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
   bool _loadingPreview = false;
   bool _purging = false;
   int? _total;
-  int? _deletions;
 
   String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -24,7 +23,6 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
     setState(() {
       _loadingPreview = true;
       _total = null;
-      _deletions = null;
     });
     try {
       final result = await supabase.rpc('preview_audit_purge', params: {
@@ -32,10 +30,7 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
         'p_end': _fmtDate(_range!.end),
       });
       if (result['success'] == true) {
-        setState(() {
-          _total = result['total'];
-          _deletions = result['deletions'];
-        });
+        setState(() => _total = result['total']);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Could not check this range.')),
@@ -47,7 +42,6 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
   }
 
   Future<void> _confirmAndPurge() async {
-    final hasDeletions = (_deletions ?? 0) > 0;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -56,14 +50,14 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('This will permanently remove $_total activity log entries from ${_fmtDate(_range!.start)} to ${_fmtDate(_range!.end)}.'),
-            if (hasDeletions) ...[
-              const SizedBox(height: 12),
-              Text(
-                'This includes $_deletions deleted order${_deletions == 1 ? '' : 's'}. Once purged, those orders can no longer be restored with Undo — this cannot be reversed.',
-                style: const TextStyle(color: AppColors.statusFailed, fontWeight: FontWeight.w600),
-              ),
-            ],
+            Text(
+              'This will permanently remove $_total log entries belonging to orders that have already been deleted, from ${_fmtDate(_range!.start)} to ${_fmtDate(_range!.end)}.',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Once purged, those orders can no longer be restored with Undo. Nothing belonging to a still-active order is ever touched.',
+              style: TextStyle(color: AppColors.statusFailed, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 12),
             const Text('This cannot be undone.', style: TextStyle(fontStyle: FontStyle.italic)),
           ],
@@ -96,10 +90,7 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
         );
       }
       if (success) {
-        setState(() {
-          _total = null;
-          _deletions = null;
-        });
+        setState(() => _total = null);
       }
     } finally {
       if (mounted) setState(() => _purging = false);
@@ -115,9 +106,25 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Activity logs build up over time. Pick a date range to see how many entries it holds, then permanently delete them to free up space.',
-              style: TextStyle(color: AppColors.textSecondary),
+            // Scope is stated plainly here, not just explained elsewhere —
+            // this tool only ever touches logs belonging to orders that no
+            // longer exist. History for a still-active order is never
+            // eligible, no matter what date range is picked.
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.purpleLight, borderRadius: BorderRadius.circular(8)),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: AppColors.purple),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Only clears log entries for orders that have already been deleted. History for any order that still exists is never touched, regardless of the date range picked.',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.purple),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -125,7 +132,6 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
                 DateRangeButton(range: _range, onChanged: (r) => setState(() {
                   _range = r;
                   _total = null;
-                  _deletions = null;
                 })),
                 const SizedBox(width: 12),
                 FilledButton(
@@ -144,15 +150,19 @@ class _AuditLogCleanupScreenState extends State<AuditLogCleanupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$_total entries found in this range.', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      if ((_deletions ?? 0) > 0)
-                        Text(
-                          'Includes $_deletions deleted order${_deletions == 1 ? '' : 's'} — purging removes the ability to restore ${_deletions == 1 ? 'it' : 'them'} with Undo.',
-                          style: const TextStyle(color: AppColors.statusFailed),
-                        )
-                      else
-                        const Text('No deleted orders in this range.', style: TextStyle(color: AppColors.textSecondary)),
+                      Text(
+                        _total == 0
+                            ? 'No deleted-order log entries in this range.'
+                            : '$_total log entr${_total == 1 ? 'y' : 'ies'} found, belonging to deleted orders in this range.',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      if ((_total ?? 0) > 0) ...[
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Purging removes the ability to restore these orders with Undo. Active orders are unaffected either way.',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ],
                     ],
                   ),
                 ),
