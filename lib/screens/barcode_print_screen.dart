@@ -115,10 +115,16 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     // are actually involved here.
     final merchantIds = widget.orders.map((o) => o['merchant_id'] as String?).whereType<String>().toSet().toList();
     final Map<String, String> merchantAddresses = {};
+    // Merchants who don't want the company name printed on their labels.
+    final Set<String> hideCompanyNameFor = {};
+    // Of those, the ones who want their own name printed in that spot instead.
+    final Set<String> showMerchantNameFor = {};
     if (merchantIds.isNotEmpty) {
-      final merchants = await supabase.from('profiles').select('id, address').inFilter('id', merchantIds);
+      final merchants = await supabase.from('profiles').select('id, address, hide_company_name_on_labels, show_merchant_name_in_header').inFilter('id', merchantIds);
       for (final m in merchants) {
         merchantAddresses[m['id'] as String] = (m['address'] as String?) ?? '';
+        if (m['hide_company_name_on_labels'] == true) hideCompanyNameFor.add(m['id'] as String);
+        if (m['show_merchant_name_in_header'] == true) showMerchantNameFor.add(m['id'] as String);
       }
     }
 
@@ -130,10 +136,10 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
       final total = orderBoxes.isEmpty ? 1 : orderBoxes.length;
       final merchantAddress = merchantAddresses[order['merchant_id']] ?? '';
       if (orderBoxes.isEmpty) {
-        labels.add({...order, 'box_code': order['order_code'], 'box_number': 1, 'box_total': 1, 'merchant_address': merchantAddress, 'box_note': ''});
+        labels.add({...order, 'box_code': order['order_code'], 'box_number': 1, 'box_total': 1, 'merchant_address': merchantAddress, 'box_note': '', 'hide_company_name': hideCompanyNameFor.contains(order['merchant_id']), 'show_merchant_in_header': showMerchantNameFor.contains(order['merchant_id'])});
       } else {
         for (final b in orderBoxes) {
-          labels.add({...order, 'box_code': b['box_code'], 'box_number': b['box_number'], 'box_total': total, 'merchant_address': merchantAddress, 'box_note': b['note'] ?? ''});
+          labels.add({...order, 'box_code': b['box_code'], 'box_number': b['box_number'], 'box_total': total, 'merchant_address': merchantAddress, 'box_note': b['note'] ?? '', 'hide_company_name': hideCompanyNameFor.contains(order['merchant_id']), 'show_merchant_in_header': showMerchantNameFor.contains(order['merchant_id'])});
         }
       }
     }
@@ -202,7 +208,9 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     double topExtra = 0,
     double bottomExtra = 0,
   }) {
-    final companyName = label['company']?['name'] ?? '';
+    final companyName = label['hide_company_name'] == true
+        ? (label['show_merchant_in_header'] == true ? (label['merchant']?['full_name'] ?? '') : '')
+        : (label['company']?['name'] ?? '');
     final merchantName = label['merchant']?['full_name'] ?? '';
     final consigneeName = label['consignee_name'] ?? '';
     final city = label['city'] ?? '';
@@ -397,7 +405,9 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
     double topExtra = 0,
     double bottomExtra = 0,
   }) {
-    final companyName = label['company']?['name'] ?? '';
+    final companyName = label['hide_company_name'] == true
+        ? (label['show_merchant_in_header'] == true ? (label['merchant']?['full_name'] ?? '') : '')
+        : (label['company']?['name'] ?? '');
     final merchantName = label['merchant']?['full_name'] ?? '';
     final merchantAddress = label['merchant_address'] ?? '';
     final consigneeName = label['consignee_name'] ?? '';
@@ -709,7 +719,9 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   }
 
   Widget _compactPreview(Map<String, dynamic> label) {
-    final companyName = label['company']?['name'] ?? '';
+    final companyName = label['hide_company_name'] == true
+        ? (label['show_merchant_in_header'] == true ? (label['merchant']?['full_name'] ?? '') : '')
+        : (label['company']?['name'] ?? '');
     final merchantName = label['merchant']?['full_name'] ?? '';
     final consigneeName = label['consignee_name'] ?? '';
     final city = label['city'] ?? '';
@@ -859,7 +871,9 @@ class _BarcodePrintScreenState extends State<BarcodePrintScreen> {
   }
 
   Widget _detailedPreview(Map<String, dynamic> label) {
-    final companyName = label['company']?['name'] ?? '';
+    final companyName = label['hide_company_name'] == true
+        ? (label['show_merchant_in_header'] == true ? (label['merchant']?['full_name'] ?? '') : '')
+        : (label['company']?['name'] ?? '');
     final merchantName = label['merchant']?['full_name'] ?? '';
     final merchantAddress = label['merchant_address'] ?? '';
     final consigneeName = label['consignee_name'] ?? '';

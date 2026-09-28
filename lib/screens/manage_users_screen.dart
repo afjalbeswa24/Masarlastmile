@@ -143,6 +143,8 @@ class _EditUserSheetState extends State<_EditUserSheet> {
   late TextEditingController _awbPrefixController;
   late TextEditingController _addressController;
   String? _defaultLabelPreset;
+  bool _hideCompanyNameOnLabels = false;
+  bool _showMerchantNameInHeader = false;
   late String _role;
   late bool _canManageUsers;
   bool _saving = false;
@@ -157,6 +159,8 @@ class _EditUserSheetState extends State<_EditUserSheet> {
     _awbPrefixController = TextEditingController(text: widget.user['awb_prefix'] ?? '');
     _addressController = TextEditingController(text: widget.user['address'] ?? '');
     _defaultLabelPreset = widget.user['default_label_preset'];
+    _hideCompanyNameOnLabels = widget.user['hide_company_name_on_labels'] == true;
+    _showMerchantNameInHeader = widget.user['show_merchant_name_in_header'] == true;
     _role = widget.user['role'] ?? 'driver';
     _canManageUsers = widget.user['can_manage_users'] == true;
   }
@@ -188,6 +192,8 @@ class _EditUserSheetState extends State<_EditUserSheet> {
           updates['awb_prefix'] = _awbPrefixController.text.trim().toUpperCase();
           updates['address'] = _addressController.text.trim();
           updates['default_label_preset'] = _defaultLabelPreset;
+          updates['hide_company_name_on_labels'] = _hideCompanyNameOnLabels;
+          updates['show_merchant_name_in_header'] = _hideCompanyNameOnLabels && _showMerchantNameInHeader;
         }
       }
 
@@ -405,6 +411,21 @@ class _EditUserSheetState extends State<_EditUserSheet> {
                   ],
                   onChanged: (v) => setState(() => _defaultLabelPreset = v),
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Hide company name on labels'),
+                  subtitle: const Text('Leaves the company name off this merchant\'s printed labels'),
+                  value: _hideCompanyNameOnLabels,
+                  onChanged: (v) => setState(() => _hideCompanyNameOnLabels = v),
+                ),
+                if (_hideCompanyNameOnLabels)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Show merchant name in its place'),
+                    subtitle: const Text('Prints this merchant\'s own name where the company name would have been'),
+                    value: _showMerchantNameInHeader,
+                    onChanged: (v) => setState(() => _showMerchantNameInHeader = v),
+                  ),
               ],
               if (_iAmMaster && _role == 'dispatcher') ...[
                 const SizedBox(height: 4),
