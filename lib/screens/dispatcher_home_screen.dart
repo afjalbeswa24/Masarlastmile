@@ -18,6 +18,7 @@ import 'add_user_screen.dart';
 import 'new_task_screen.dart';
 import 'audit_trail_dialog.dart';
 import 'dispatcher_bulk_upload_screen.dart';
+import 'bulk_assign_drivers_screen.dart';
 import 'manage_users_screen.dart';
 import 'user_activity_screen.dart';
 import 'audit_log_cleanup_screen.dart';
@@ -659,6 +660,14 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                   tooltip: 'Bulk Upload Orders',
                   onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (_) => const DispatcherBulkUploadScreen()));
+                    _loadOrders();
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.local_shipping, color: Colors.white70),
+                  tooltip: 'Bulk Assign Drivers',
+                  onPressed: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const BulkAssignDriversScreen()));
                     _loadOrders();
                   },
                 ),
