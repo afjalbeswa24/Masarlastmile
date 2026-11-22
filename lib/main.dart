@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
@@ -32,7 +35,98 @@ class AppScrollBehavior extends MaterialScrollBehavior {
     publishableKey: 'sb_publishable_ChsDjQQH15MbTVCFjpoLsg_pp8TbCAY',
   );
 
+  await SessionTimeout.init();
+  await SessionTimeout.enforce();
+
   runApp(const MyApp());
+}
+
+/// Signs everyone out after [maxIdle] without use, so people must log in
+/// again after a long break. Checked on app start, on returning to the app,
+/// and on the first tap/click after a long idle period.
+class SessionTimeout {
+  static const maxIdle = Duration(hours: 6);
+  static const _key = 'last_active_ms';
+  static SharedPreferences? _prefs;
+  static int _lastStamp = 0;
+
+  static Future<void> init() async {
+    try {
+      _prefs = await SharedPreferences.getInstance();
+    } catch (_) {}
+  }
+
+  /// Returns true if the user was just signed out for being idle too long.
+  static Future<bool> enforce() async {
+    // Web/desktop browser only — the Android app stays signed in.
+    if (!kIsWeb) return false;
+    final prefs = _prefs;
+    final auth = Supabase.instance.client.auth;
+    if (prefs == null || auth.currentSession == null) return false;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final last = prefs.getInt(_key);
+    if (last == null) {
+      await prefs.setInt(_key, now);
+      _lastStamp = now;
+      return false;
+    }
+    if (now - last > maxIdle.inMilliseconds) {
+      _lastStamp = 0;
+      await prefs.remove(_key);
+      await auth.signOut();
+      return true;
+    }
+    return false;
+  }
+
+  /// Records activity (at most once every 30 seconds).
+  static void touch() {
+    if (!kIsWeb) return;
+    final prefs = _prefs;
+    if (prefs == null || Supabase.instance.client.auth.currentSession == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastStamp < 30000) return;
+    _lastStamp = now;
+    prefs.setInt(_key, now);
+  }
+}
+
+class _ActivityWatcher extends StatefulWidget {
+  final Widget child;
+  const _ActivityWatcher({required this.child});
+  @override
+  State<_ActivityWatcher> createState() => _ActivityWatcherState();
+}
+
+class _ActivityWatcherState extends State<_ActivityWatcher> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(SessionTimeout.enforce());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) async {
+        if (await SessionTimeout.enforce()) return;
+        SessionTimeout.touch();
+      },
+      child: widget.child,
+    );
+  }
 }
 
 final supabase = Supabase.instance.client;
@@ -50,7 +144,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
+          child: _ActivityWatcher(child: child!),
         );
       },
       home: const AuthGate(),
