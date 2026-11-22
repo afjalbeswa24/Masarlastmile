@@ -209,7 +209,7 @@ class _FilterBarState extends State<FilterBar> {
       chips.add(_chip(
         label: widget.filters.statuses.isEmpty ? 'Status' : 'Status (${widget.filters.statuses.length})',
         active: widget.filters.statuses.isNotEmpty,
-        onTap: () => _openMultiSelect(title: 'Status', selected: widget.filters.statuses, options: _statuses.map((s) => MapEntry(s, s)).toList()),
+        onTap: () => _openMultiSelect(title: 'Status', selected: widget.filters.statuses, options: _statuses.map((s) => MapEntry(s, statusRawDisplay(s))).toList()),
       ));
     }
     if (widget.enabledFilters['driver'] ?? true) {

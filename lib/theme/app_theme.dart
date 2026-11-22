@@ -43,7 +43,7 @@ String statusLabel(String status) {
   switch (status) {
     case 'pending': return 'Pending';
     case 'picked_up': return 'Picked Up';
-    case 'sorted': return 'Sorted';
+    case 'sorted': return 'Hub Arrived';
     case 'assigned': return 'Assigned';
     case 'out_for_delivery': return 'Out for Delivery';
     case 'delivered': return 'Delivered';
@@ -54,6 +54,11 @@ String statusLabel(String status) {
     default: return status;
   }
 }
+
+/// The database value for the "Hub Arrived" stage is still 'sorted' (no data
+/// migration). Use this wherever a raw status value would otherwise be shown
+/// to people as-is (dropdowns, messages, exports) so they see the new wording.
+String statusRawDisplay(String? status) => status == 'sorted' ? 'hub_arrived' : (status ?? '');
 
 ThemeData buildAppTheme() {
   return ThemeData(

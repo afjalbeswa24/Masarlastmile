@@ -156,8 +156,12 @@ class _AuditTrailDialogState extends State<AuditTrailDialog> {
                               DataCell(Text(log['user']?['full_name'] ?? 'System')),
                               DataCell(Text(log['action_type'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600))),
                               DataCell(Text(log['field'] ?? '')),
-                              DataCell(Text(_formatValue(log['old_value'], isDriverField: isDriverField))),
-                                        DataCell(Text(_formatValue(log['new_value'], isDriverField: isDriverField))),
+                              DataCell(Text(log['field'] == 'status'
+                                  ? statusRawDisplay(log['old_value'])
+                                  : _formatValue(log['old_value'], isDriverField: isDriverField))),
+                              DataCell(Text(log['field'] == 'status'
+                                  ? statusRawDisplay(log['new_value'])
+                                  : _formatValue(log['new_value'], isDriverField: isDriverField))),
                             ]);
                           }).toList(),
                         ),

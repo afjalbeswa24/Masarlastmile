@@ -27,6 +27,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'tracking_screen.dart';
 import '../utils/qatar_time.dart';
 import 'reports_screen.dart';
+import '../widgets/animated_header.dart';
 
 enum _DispatcherTab { orders, insights, tracking, reports }
 
@@ -39,6 +40,7 @@ class DispatcherHomeScreen extends StatefulWidget {
 
 class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   _DispatcherTab _currentTab = _DispatcherTab.orders;
+  int _kpiTick = 0;
 
   List<Map<String, dynamic>> _orders = [];
   Set<String> _selectedIds = {};
@@ -332,7 +334,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
             row.add(xl.TextCellValue(order['merchant']?['full_name'] ?? ''));
             break;
           case 'status':
-            row.add(xl.TextCellValue(order['status'] ?? ''));
+            row.add(xl.TextCellValue(statusRawDisplay(order['status'])));
             break;
           case 'date':
             row.add(xl.TextCellValue(order['delivery_date'] ?? ''));
@@ -408,10 +410,10 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
   }
 
   Widget _navItem(String label, _DispatcherTab tab) {
-    final active = _currentTab == tab;
-    return InkWell(
+    return HeaderTab(
+      label: label,
+      active: _currentTab == tab,
       onTap: () => setState(() => _currentTab = tab),
-      child: _NavTab(label: label, active: active),
     );
   }
 
@@ -620,7 +622,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             child: Row(
               children: [
-                _navItem('Essence Express', _DispatcherTab.insights),
+                HeaderBrand(name: 'Essence Express', onTap: () => setState(() => _currentTab = _DispatcherTab.insights)),
                 const SizedBox(width: 32),
                 _navItem('Orders', _DispatcherTab.orders),
                 const SizedBox(width: 20),
@@ -629,52 +631,28 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                 _navItem('Reports', _DispatcherTab.reports),
                 const Spacer(),
                 if (_isMaster) ...[
-                  IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.white70),
-                    tooltip: 'Company Settings',
-                    onPressed: _openCompanySettingsDialog,
+                  HoverIconButton(icon: Icons.settings, tooltip: 'Company Settings', onPressed: _openCompanySettingsDialog,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.history, color: Colors.white70),
-                    tooltip: 'User Activity',
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserActivityScreen())),
+                  HoverIconButton(icon: Icons.history, tooltip: 'User Activity', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserActivityScreen())),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.auto_delete_outlined, color: Colors.white70),
-                    tooltip: 'Activity Log Cleanup',
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuditLogCleanupScreen())),
+                  HoverIconButton(icon: Icons.auto_delete_outlined, tooltip: 'Activity Log Cleanup', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuditLogCleanupScreen())),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.people_alt, color: Colors.white70),
-                    tooltip: 'Manage Users',
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
+                  HoverIconButton(icon: Icons.people_alt, tooltip: 'Manage Users', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.person_add, color: Colors.white70),
-                    tooltip: 'Add User',
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddUserScreen())),
+                  HoverIconButton(icon: Icons.person_add, tooltip: 'Add User', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddUserScreen())),
                   ),
                 ],
-                IconButton(
-                  icon: const Icon(Icons.upload_file, color: Colors.white70),
-                  tooltip: 'Bulk Upload Orders',
-                  onPressed: () async {
+                HoverIconButton(icon: Icons.upload_file, tooltip: 'Bulk Upload Orders', onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (_) => const DispatcherBulkUploadScreen()));
                     _loadOrders();
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.local_shipping, color: Colors.white70),
-                  tooltip: 'Bulk Assign Drivers',
-                  onPressed: () async {
+                HoverIconButton(icon: Icons.local_shipping, tooltip: 'Bulk Assign Drivers', onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (_) => const BulkAssignDriversScreen()));
                     _loadOrders();
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.view_column, color: Colors.white70),
-                  tooltip: 'Manage Columns',
-                  onPressed: () async {
+                HoverIconButton(icon: Icons.view_column, tooltip: 'Manage Columns', onPressed: () async {
                     final result = await showDialog<Map<String, bool>>(
                       context: context,
                       builder: (_) => ManageColumnsDialog(visibility: _columnVisibility),
@@ -682,14 +660,9 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                     if (result != null) setState(() => _columnVisibility = result);
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.download, color: Colors.white70),
-                  tooltip: 'Export Orders',
-                  onPressed: () => showDialog(context: context, builder: (_) => ExportDialog(columnVisibility: _columnVisibility)),
+                HoverIconButton(icon: Icons.download, tooltip: 'Export Orders', onPressed: () => showDialog(context: context, builder: (_) => ExportDialog(columnVisibility: _columnVisibility)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.white70),
-                  onPressed: () { _searchController.clear(); _loadOrders(); },
+                SpinRefreshButton(onPressed: () { _searchController.clear(); _loadOrders(); setState(() => _kpiTick++); },
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
@@ -700,33 +673,15 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.white70),
-                  onPressed: () => supabase.auth.signOut(),
+                HoverIconButton(icon: Icons.logout, onPressed: () => supabase.auth.signOut(),
                 ),
               ],
             ),
           ),
+          HeaderProgressSweep(active: _loading),
+          HeaderKpiStrip(refreshTick: _kpiTick),
           Expanded(child: _buildBody()),
         ],
-      ),
-    );
-  }
-}
-
-class _NavTab extends StatelessWidget {
-  final String label;
-  final bool active;
-  const _NavTab({required this.label, this.active = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(
-        color: active ? Colors.white : Colors.white60,
-        fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-        fontSize: 14,
       ),
     );
   }

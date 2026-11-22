@@ -93,7 +93,7 @@ class _DriverCollectScanScreenState extends State<DriverCollectScanScreen> {
         SoundUtils.playDuplicate();
         setState(() {
           _lastSuccess = false;
-          _lastMessage = '${order['consignee_name']} is already "${order['status']}".';
+          _lastMessage = '${order['consignee_name']} is already "${statusRawDisplay(order['status'])}".';
         });
         return;
       }

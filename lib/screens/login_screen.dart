@@ -143,9 +143,32 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 // -- Doha skyline + animated pearl-strand route ------------
                 Expanded(
                   flex: 3,
-                  child: AnimatedBuilder(
-                    animation: _routeController,
-                    builder: (context, _) => CustomPaint(painter: _SkylineRoutePainter(_routeController.value), size: Size.infinite),
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      return Stack(
+                        children: [
+                          // Doha skyline photo (blue-toned, transparent PNG) sitting
+                          // on the waterline the route painter draws at 86% height.
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: box.maxHeight * 0.14,
+                            child: Image.asset(
+                              'assets/images/doha_skyline.png',
+                              fit: BoxFit.fitWidth,
+                              alignment: Alignment.bottomCenter,
+                              filterQuality: FilterQuality.medium,
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: AnimatedBuilder(
+                              animation: _routeController,
+                              builder: (context, _) => CustomPaint(painter: _SkylineRoutePainter(_routeController.value), size: Size.infinite),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
 
@@ -460,40 +483,9 @@ class _SkylineRoutePainter extends CustomPainter {
   void _drawSkyline(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final baseline = h * 0.86;
-    // Building bars are dark silhouettes against the lighter sky-blue
-    // background — the opposite of the background, so they read clearly
-    // as a skyline rather than blending in.
-    final paint = Paint()..color = _Palette.ink.withValues(alpha: 0.75);
-    // Torch tower stays a touch darker still, so the one landmark shape
-    // stands out from the plain bars around it.
-    final towerPaint = Paint()..color = _Palette.ink.withValues(alpha: 0.92);
-
-    void building(double xFrac, double widthFrac, double heightFrac) {
-      final bw = w * widthFrac;
-      final bh = h * heightFrac;
-      final bx = w * xFrac;
-      canvas.drawRect(Rect.fromLTWH(bx, baseline - bh, bw, bh), paint);
-    }
-
-    building(0.00, 0.028, 0.20);
-    building(0.04, 0.022, 0.28);
-    building(0.075, 0.03, 0.16);
-    building(0.12, 0.02, 0.34);
-    building(0.155, 0.026, 0.22);
-    // Torch tower — the distinctive Doha landmark on the skyline.
-    canvas.drawRect(Rect.fromLTWH(w * 0.20, baseline - h * 0.42, w * 0.014, h * 0.42), towerPaint);
-    canvas.drawCircle(Offset(w * 0.207, baseline - h * 0.44), h * 0.032, towerPaint);
-    building(0.235, 0.024, 0.24);
-    building(0.27, 0.018, 0.34);
-    building(0.30, 0.03, 0.18);
-    building(0.68, 0.028, 0.18);
-    building(0.72, 0.02, 0.30);
-    building(0.75, 0.032, 0.22);
-    building(0.79, 0.018, 0.36);
-    building(0.82, 0.026, 0.16);
-    building(0.86, 0.022, 0.26);
-    building(0.90, 0.03, 0.14);
-    building(0.94, 0.024, 0.24);
+    // The skyline itself is now the Doha photo (assets/images/doha_skyline.png)
+    // drawn behind this painter, so only the waterline and its faint
+    // reflection marks are painted here.
 
     final waterline = Paint()
       ..color = Colors.white.withValues(alpha: 0.14)

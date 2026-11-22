@@ -121,7 +121,7 @@ class _WarehouseSortDetailScreenState extends State<WarehouseSortDetailScreen> {
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text(
-                          'This order cannot be sorted until a dispatcher assigns a driver.',
+                          'This order cannot be marked Hub Arrived until a dispatcher assigns a driver.',
                           style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         ),
                       ),

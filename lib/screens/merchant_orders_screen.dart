@@ -221,7 +221,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       for (final key in activeKeys) {
         switch (key) {
           case 'awb': row.add(xl.TextCellValue(order['order_code'] ?? '')); break;
-          case 'status': row.add(xl.TextCellValue(order['status'] ?? '')); break;
+          case 'status': row.add(xl.TextCellValue(statusRawDisplay(order['status']))); break;
           case 'quantity': row.add(xl.TextCellValue('${order['quantity'] ?? ''}')); break;
           case 'cod': row.add(xl.TextCellValue('${order['cod_amount'] ?? ''}')); break;
           case 'consignee': row.add(xl.TextCellValue(order['consignee_name'] ?? '')); break;

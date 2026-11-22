@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:excel/excel.dart' as xl;
 import 'package:file_saver/file_saver.dart';
 import '../main.dart';
+import '../theme/app_theme.dart';
 import '../utils/qatar_time.dart';
 
 class ExportDialog extends StatefulWidget {
@@ -121,7 +122,7 @@ class _ExportDialogState extends State<ExportDialog> {
               row.add(xl.TextCellValue(order['merchant']?['full_name'] ?? ''));
               break;
             case 'status':
-              row.add(xl.TextCellValue(order['status'] ?? ''));
+              row.add(xl.TextCellValue(statusRawDisplay(order['status'])));
               break;
             case 'date':
               row.add(xl.TextCellValue(order['delivery_date'] ?? ''));

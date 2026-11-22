@@ -167,7 +167,7 @@ class _WarehousePackageInfoTabState extends State<WarehousePackageInfoTab> {
                                     const Text('This Box\'s Timeline', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                                     const SizedBox(height: 6),
                                     _infoRow('Picked Up', _fmtTime(_box!['picked_up_at'])),
-                                    _infoRow('Sorted', _fmtTime(_box!['sorted_at'])),
+                                    _infoRow('Hub Arrived', _fmtTime(_box!['sorted_at'])),
                                     _infoRow('Out for Delivery', _fmtTime(_box!['out_for_delivery_at'])),
                                   ],
                                 ),

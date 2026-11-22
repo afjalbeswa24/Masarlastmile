@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../main.dart';
+import '../theme/app_theme.dart';
 
 class CollectionHomeScreen extends StatefulWidget {
   const CollectionHomeScreen({super.key});
@@ -39,7 +40,7 @@ class _CollectionHomeScreenState extends State<CollectionHomeScreen> {
       if (order['status'] != 'pending') {
         setState(() {
           _lastSuccess = false;
-          _lastMessage = '${order['consignee_name']} ($code) is already "${order['status']}" — not picking up again.';
+          _lastMessage = '${order['consignee_name']} ($code) is already "${statusRawDisplay(order['status'])}" — not picking up again.';
         });
         return;
       }

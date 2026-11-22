@@ -250,7 +250,7 @@ class _BulkAssignDriversScreenState extends State<BulkAssignDriversScreen> {
                         '${_skippedStatus.length} order(s) skipped (already delivered / cancelled / returned)',
                         AppColors.textSecondary,
                         _skippedStatus
-                            .map((s) => Text('${s['awb']} (${s['status']})', style: const TextStyle(fontSize: 12)))
+                            .map((s) => Text('${s['awb']} (${statusRawDisplay(s['status'])})', style: const TextStyle(fontSize: 12)))
                             .toList(),
                       ),
                       if (hasIssues && !_applied)

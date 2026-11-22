@@ -178,7 +178,7 @@ class _DriverHomeTabState extends State<DriverHomeTab> {
                   ),
                   Row(
                     children: [
-                      _statCard('Sorted', _counts['sorted'] ?? 0, AppColors.statusAssigned, () {
+                      _statCard('Hub Arrived', _counts['sorted'] ?? 0, AppColors.statusAssigned, () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverScanScreen()))
                             .then((_) => _load());
                       }),

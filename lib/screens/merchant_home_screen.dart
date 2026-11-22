@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../theme/app_theme.dart';
 import 'merchant_orders_screen.dart';
+import '../widgets/animated_header.dart';
 
 class MerchantHomeScreen extends StatefulWidget {
   const MerchantHomeScreen({super.key});
@@ -42,8 +43,7 @@ class _MerchantHomeScreenState extends State<MerchantHomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             child: Row(
               children: [
-                Text(_companyName,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1)),
+                HeaderBrand(name: _companyName),
                 const Spacer(),
                 CircleAvatar(
                   radius: 16,
@@ -53,13 +53,15 @@ class _MerchantHomeScreenState extends State<MerchantHomeScreen> {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.white70),
+                HoverIconButton(
+                  icon: Icons.logout,
+                  tooltip: 'Sign out',
                   onPressed: () => supabase.auth.signOut(),
                 ),
               ],
             ),
           ),
+          const HeaderKpiStrip(merchant: true),
           const Expanded(child: MerchantOrdersScreen()),
         ],
       ),

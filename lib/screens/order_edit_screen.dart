@@ -250,7 +250,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: _statuses
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .map((s) => DropdownMenuItem(value: s, child: Text(statusRawDisplay(s))))
                     .toList(),
                 onChanged: (v) => setState(() => _status = v!),
               ),

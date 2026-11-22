@@ -114,7 +114,7 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
         SoundUtils.playDuplicate();
         setState(() {
           _lastSuccess = false;
-          _lastMessage = '${order['consignee_name']} ($code) is already "${order['status']}".';
+          _lastMessage = '${order['consignee_name']} ($code) is already "${statusRawDisplay(order['status'])}".';
         });
         return;
       }
@@ -186,7 +186,7 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                Text('Remaining Sorted (${_remainingSorted.length})', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                Text('Remaining Hub Arrived (${_remainingSorted.length})', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               ],
             ),
           ),
@@ -194,7 +194,7 @@ class _DriverScanScreenState extends State<DriverScanScreen> {
             child: _loadingList
                 ? const Center(child: CircularProgressIndicator())
                 : _remainingSorted.isEmpty
-                    ? const Center(child: Text('All sorted orders started', style: TextStyle(color: AppColors.statusDelivered, fontWeight: FontWeight.w600)))
+                    ? const Center(child: Text('All hub-arrived orders started', style: TextStyle(color: AppColors.statusDelivered, fontWeight: FontWeight.w600)))
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         itemCount: _remainingSorted.length,

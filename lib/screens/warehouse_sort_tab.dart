@@ -54,11 +54,11 @@ class _WarehouseSortTabState extends State<WarehouseSortTab> {
 
       final blockedStatuses = ['sorted', 'assigned', 'out_for_delivery', 'delivered', 'failed', 'cancelled'];
       if (blockedStatuses.contains(order['status'])) {
-        await _pauseWithMessage('${order['consignee_name']} ($code) is already "${order['status']}" — not sorting again.');
+        await _pauseWithMessage('${order['consignee_name']} ($code) is already "${statusRawDisplay(order['status'])}" — not scanning again.');
         return;
       }
       if (BoxScanService.alreadyScanned(box, 'sorted')) {
-        await _pauseWithMessage('Box ${box['box_number']} already sorted.');
+        await _pauseWithMessage('Box ${box['box_number']} already marked Hub Arrived.');
         return;
       }
 
@@ -136,7 +136,7 @@ class _WarehouseSortTabState extends State<WarehouseSortTab> {
             ),
           Expanded(
             child: _recentlySorted.isEmpty
-                ? const Center(child: Text('No items sorted yet this session', style: TextStyle(color: AppColors.textSecondary)))
+                ? const Center(child: Text('No items marked Hub Arrived yet this session', style: TextStyle(color: AppColors.textSecondary)))
                 : ListView.builder(
                     padding: const EdgeInsets.all(12),
                     itemCount: _recentlySorted.length,

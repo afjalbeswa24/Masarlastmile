@@ -179,7 +179,7 @@ class _BulkEditDialogState extends State<BulkEditDialog> {
                       child: DropdownButtonFormField<String>(
                         initialValue: _selectedStatus,
                         decoration: _decoration('Status'),
-                        items: _statuses.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        items: _statuses.map((s) => DropdownMenuItem(value: s, child: Text(statusRawDisplay(s)))).toList(),
                         onChanged: (v) => setState(() => _selectedStatus = v),
                       ),
                     ),

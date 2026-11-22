@@ -71,7 +71,7 @@ class _WarehouseHomeTabState extends State<WarehouseHomeTab> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _StatCard(
-                      label: 'Sorted',
+                      label: 'Hub Arrived',
                       value: '$_sortedCount',
                       color: AppColors.statusSorted,
                     ),

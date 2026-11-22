@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:excel/excel.dart' as xl;
 import 'package:file_saver/file_saver.dart';
 import '../main.dart';
+import '../theme/app_theme.dart';
 
 class MerchantExportDialog extends StatefulWidget {
   const MerchantExportDialog({super.key});
@@ -45,7 +46,7 @@ class _MerchantExportDialogState extends State<MerchantExportDialog> {
       for (final o in orders) {
         sheet.appendRow([
           xl.TextCellValue(o['order_code'] ?? ''),
-          xl.TextCellValue(o['status'] ?? ''),
+          xl.TextCellValue(statusRawDisplay(o['status'])),
           xl.TextCellValue(o['consignee_name'] ?? ''),
           xl.TextCellValue(o['phone'] ?? ''),
           xl.TextCellValue(o['full_address'] ?? ''),
