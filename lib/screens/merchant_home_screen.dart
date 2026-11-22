@@ -40,7 +40,7 @@ class _MerchantHomeScreenState extends State<MerchantHomeScreen> {
         children: [
           Container(
             color: AppColors.navy,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               children: [
                 HeaderBrand(name: _companyName),

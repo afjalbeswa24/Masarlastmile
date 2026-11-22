@@ -280,7 +280,10 @@ class _HeaderKpiStripState extends State<HeaderKpiStrip> with SingleTickerProvid
     try {
       final n = QatarTime.now();
       final today = '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-      final rows = await supabase.from('orders').select('status').eq('delivery_date', today).timeout(const Duration(seconds: 15));
+      var q = supabase.from('orders').select('status').eq('delivery_date', today);
+      // A merchant must only ever see their own orders in these numbers.
+      if (widget.merchant) q = q.eq('merchant_id', supabase.auth.currentUser!.id);
+      final rows = await q.timeout(const Duration(seconds: 15));
       final k = _Kpi();
       for (final r in rows as List) {
         final s = r['status'] as String? ?? 'pending';
@@ -305,17 +308,15 @@ class _HeaderKpiStripState extends State<HeaderKpiStrip> with SingleTickerProvid
 
   Widget _tile(String label, int v, Color dot) {
     return Padding(
-      padding: const EdgeInsets.only(right: 22),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 6, height: 6, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
-          const SizedBox(width: 5),
-          Text(label.toUpperCase(), style: const TextStyle(color: Colors.white60, fontSize: 9.5, fontWeight: FontWeight.w600, letterSpacing: 0.8)),
-        ]),
-        const SizedBox(height: 2),
+      padding: const EdgeInsets.only(right: 20),
+      child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Container(width: 6, height: 6, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
         _loaded
-            ? CountUp(key: ValueKey('$label$v'), value: v, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700))
-            : const Text('–', style: TextStyle(color: Colors.white38, fontSize: 20, fontWeight: FontWeight.w700)),
+            ? CountUp(key: ValueKey('$label$v'), value: v, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))
+            : const Text('–', style: TextStyle(color: Colors.white38, fontSize: 15, fontWeight: FontWeight.w700)),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11.5, fontWeight: FontWeight.w500)),
       ]),
     );
   }
@@ -324,8 +325,9 @@ class _HeaderKpiStripState extends State<HeaderKpiStrip> with SingleTickerProvid
   Widget build(BuildContext context) {
     final pct = _k.total == 0 ? 0.0 : _k.delivered / _k.total;
     return Container(
-      color: const Color(0xFF173A66),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      width: double.infinity,
+      color: AppColors.navy,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
@@ -344,7 +346,7 @@ class _HeaderKpiStripState extends State<HeaderKpiStrip> with SingleTickerProvid
   // Dispatcher: a small truck driving along a route; progress = delivered share.
   Widget _truckRoute(double pct) {
     return SizedBox(
-      width: 220, height: 34,
+      width: 170, height: 22,
       child: AnimatedBuilder(
         animation: _truck,
         builder: (_, __) => CustomPaint(painter: _RoutePainter(_anim ? _truck.value : 0.5, pct)),
@@ -363,7 +365,7 @@ class _HeaderKpiStripState extends State<HeaderKpiStrip> with SingleTickerProvid
     ];
     final d = _reduceMotion(context) ? Duration.zero : const Duration(milliseconds: 800);
     return SizedBox(
-      width: 330,
+      width: 300,
       child: Row(children: [
         for (var i = 0; i < steps.length; i++) ...[
           Expanded(
@@ -381,8 +383,8 @@ class _HeaderKpiStripState extends State<HeaderKpiStrip> with SingleTickerProvid
                   ),
                 ),
               ),
-              const SizedBox(height: 3),
-              Text(steps[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 9)),
+              const SizedBox(height: 2),
+              Text(steps[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 8.5)),
             ]),
           ),
           if (i < steps.length - 1) const SizedBox(width: 6),

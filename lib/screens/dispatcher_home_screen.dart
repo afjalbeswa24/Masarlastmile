@@ -619,7 +619,7 @@ class _DispatcherHomeScreenState extends State<DispatcherHomeScreen> {
           // Top nav bar — always visible, never rebuilt when switching tabs
           Container(
             color: AppColors.navy,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               children: [
                 HeaderBrand(name: 'Essence Express', onTap: () => setState(() => _currentTab = _DispatcherTab.insights)),
