@@ -134,7 +134,20 @@ class _DispatcherBulkUploadScreenState extends State<DispatcherBulkUploadScreen>
       return;
     }
 
-    final headers = rows.first.map((h) => h.toString().trim()).toList();
+    // Header names are matched ignoring upper/lower case and extra spaces
+    // (PHONE, phone and Phone are all fine).
+    const known = [
+      'Consignee Name', 'Phone', 'Full Address', 'District', 'City', 'Quantity',
+      'COD Amount', 'Delivery Date', 'After', 'Before', 'Notes'
+    ];
+    String canon(String h) {
+      final key = h.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+      for (final k in known) {
+        if (k.toLowerCase() == key) return k;
+      }
+      return h.trim();
+    }
+    final headers = rows.first.map((h) => canon(h.toString())).toList();
 
     for (final col in _requiredColumns) {
       if (!headers.contains(col)) {
